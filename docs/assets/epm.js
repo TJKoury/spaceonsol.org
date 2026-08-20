@@ -171,10 +171,15 @@ export const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 /**
  * Sign an EPM with a connected Solana wallet.
- * The wallet's ed25519 key is published in KEYS[], which per §4 is the
- * authoritative verifying key for ed25519 — so the result verifies under the
- * standard procedure even though the key is a Solana key rather than one
- * derived at m/44'/0'/N'/0'/0'.
+ *
+ * Per §4, the ed25519 verifying key is whatever is published in KEYS[] — it is
+ * authoritative, because SLIP-10 ed25519 has no public derivation. The
+ * m/44'/0'/N'/0'/0' path is a suggested convention, not a constraint on
+ * verification, so the wallet's own ed25519 key is a valid signing key.
+ *
+ * KEY_PATH is deliberately left unset: the wallet does not tell us which
+ * account index the user selected, and asserting a path we cannot confirm
+ * would be worse than omitting it (rule 2 omits it cleanly).
  */
 export async function signEPM(epm, provider, publicKeyBytes) {
   const record = { ...epm, SIGNATURE_ALGORITHM: "ed25519" };
