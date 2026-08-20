@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 340" role="img" aria-labelledby="bcTitle bcDesc">
+  <title id="bcTitle">Bonded keys across orbital infrastructure</title>
+  <desc id="bcDesc">A satellite, ground station, operations centre and data consumer each hold a signing key. Third parties deposit value at any key's derived addresses to raise the cost of compromising it.</desc>
+
+  <defs>
+    <linearGradient id="bcLink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6ea8ff" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#46e0c8" stop-opacity=".85"/>
+    </linearGradient>
+    <radialGradient id="bcGlow">
+      <stop offset="0%" stop-color="#46e0c8" stop-opacity=".30"/>
+      <stop offset="100%" stop-color="#46e0c8" stop-opacity="0"/>
+    </radialGradient>
+    <marker id="bcArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ffc25c"/>
+    </marker>
+    <marker id="bcArrowLink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#46e0c8"/>
+    </marker>
+  </defs>
+
+  <style>
+    .nlabel{font:600 12px system-ui,sans-serif;fill:#e7ecf3}
+    .nsub{font:400 9.5px ui-monospace,monospace;fill:#8b93a7}
+    .bond{font:700 11px ui-monospace,monospace;fill:#ffc25c}
+    .cap{font:600 10px system-ui,sans-serif;fill:#8b93a7;letter-spacing:.06em;text-transform:uppercase}
+    .depositor{font:500 10px system-ui,sans-serif;fill:#8b93a7}
+    .keyring{fill:none;stroke:#6ea8ff;stroke-width:1.4}
+  </style>
+
+  <!-- ============ the signed data path ============ -->
+  <text class="cap" x="30" y="26">Signed data path</text>
+  <line x1="120" y1="86" x2="248" y2="86" stroke="url(#bcLink)" stroke-width="2" marker-end="url(#bcArrowLink)"/>
+  <line x1="330" y1="86" x2="458" y2="86" stroke="url(#bcLink)" stroke-width="2" marker-end="url(#bcArrowLink)"/>
+  <line x1="540" y1="86" x2="668" y2="86" stroke="url(#bcLink)" stroke-width="2" marker-end="url(#bcArrowLink)"/>
+
+  <!-- node 1: satellite -->
+  <g transform="translate(30,50)">
+    <rect width="90" height="72" rx="11" fill="#11141f" stroke="rgba(255,255,255,.14)"/>
+    <g transform="translate(45,26)" stroke="#6ea8ff" stroke-width="1.5" fill="none" stroke-linecap="round">
+      <rect x="-9" y="-7" width="18" height="14" rx="2.5"/>
+      <path d="M-9,-2 h-9 M9,-2 h9 M-18,-6 v8 M18,-6 v8"/>
+    </g>
+    <text class="nlabel" x="45" y="52" text-anchor="middle">Satellite</text>
+    <text class="nsub" x="45" y="64" text-anchor="middle">signs telemetry</text>
+  </g>
+
+  <!-- node 2: ground station -->
+  <g transform="translate(240,50)">
+    <rect width="90" height="72" rx="11" fill="#11141f" stroke="rgba(255,255,255,.14)"/>
+    <g transform="translate(45,26)" stroke="#6ea8ff" stroke-width="1.5" fill="none" stroke-linecap="round">
+      <path d="M-11,8 h22 M-6,8 l4,-11 M6,8 l-4,-11"/>
+      <path d="M-10,-6 a11,11 0 0 1 20,0"/>
+    </g>
+    <text class="nlabel" x="45" y="52" text-anchor="middle">Ground station</text>
+    <text class="nsub" x="45" y="64" text-anchor="middle">signs receipt</text>
+  </g>
+
+  <!-- node 3: ops centre -->
+  <g transform="translate(450,50)">
+    <rect width="90" height="72" rx="11" fill="#11141f" stroke="rgba(255,255,255,.14)"/>
+    <g transform="translate(45,26)" stroke="#6ea8ff" stroke-width="1.5" fill="none" stroke-linecap="round">
+      <rect x="-11" y="-8" width="22" height="15" rx="2"/>
+      <path d="M-5,11 h10 M0,7 v4"/>
+    </g>
+    <text class="nlabel" x="45" y="52" text-anchor="middle">Ops centre</text>
+    <text class="nsub" x="45" y="64" text-anchor="middle">signs warnings</text>
+  </g>
+
+  <!-- node 4: consumer -->
+  <g transform="translate(660,50)">
+    <rect width="90" height="72" rx="11" fill="#11141f" stroke="rgba(255,255,255,.14)"/>
+    <g transform="translate(45,26)" stroke="#46e0c8" stroke-width="1.5" fill="none" stroke-linecap="round">
+      <circle cx="0" cy="-3" r="5.5"/>
+      <path d="M-9,10 a9,9 0 0 1 18,0"/>
+    </g>
+    <text class="nlabel" x="45" y="52" text-anchor="middle">You</text>
+    <text class="nsub" x="45" y="64" text-anchor="middle">relies on all three</text>
+  </g>
+
+  <!-- ============ keys + bonds ============ -->
+  <text class="cap" x="30" y="166">Each holds a key — each key holds value</text>
+
+  <g transform="translate(0,182)">
+    <!-- key + bond under each node -->
+    <g transform="translate(75,0)">
+      <circle cx="0" cy="0" r="26" fill="url(#bcGlow)"/>
+      <circle class="keyring" cx="0" cy="0" r="15"/>
+      <path d="M-4,0 h10 M4,-3 v6" stroke="#6ea8ff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <circle cx="-7" cy="0" r="4.5" fill="none" stroke="#6ea8ff" stroke-width="1.6"/>
+      <text class="bond" x="0" y="38" text-anchor="middle">$1.2M bonded</text>
+    </g>
+    <g transform="translate(285,0)">
+      <circle cx="0" cy="0" r="26" fill="url(#bcGlow)"/>
+      <circle class="keyring" cx="0" cy="0" r="15"/>
+      <path d="M-4,0 h10 M4,-3 v6" stroke="#6ea8ff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <circle cx="-7" cy="0" r="4.5" fill="none" stroke="#6ea8ff" stroke-width="1.6"/>
+      <text class="bond" x="0" y="38" text-anchor="middle">$430K bonded</text>
+    </g>
+    <g transform="translate(495,0)">
+      <circle cx="0" cy="0" r="26" fill="url(#bcGlow)"/>
+      <circle class="keyring" cx="0" cy="0" r="15"/>
+      <path d="M-4,0 h10 M4,-3 v6" stroke="#6ea8ff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <circle cx="-7" cy="0" r="4.5" fill="none" stroke="#6ea8ff" stroke-width="1.6"/>
+      <text class="bond" x="0" y="38" text-anchor="middle">$2.8M bonded</text>
+    </g>
+
+    <!-- dashed lines from node to its key -->
+    <g stroke="rgba(255,255,255,.13)" stroke-width="1" stroke-dasharray="3 4">
+      <line x1="75" y1="-60" x2="75" y2="-16"/>
+      <line x1="285" y1="-60" x2="285" y2="-16"/>
+      <line x1="495" y1="-60" x2="495" y2="-16"/>
+    </g>
+  </g>
+
+  <!-- ============ you deposit into keys you depend on ============ -->
+  <g transform="translate(0,300)">
+    <text class="depositor" x="705" y="-6" text-anchor="middle">You deposit — no permission needed</text>
+    <path d="M690,-22 C600,-4 380,10 500,-86" fill="none" stroke="#ffc25c" stroke-width="1.6"
+          stroke-dasharray="5 4" marker-end="url(#bcArrow)" opacity=".9"/>
+    <path d="M672,-24 C480,16 200,10 290,-86" fill="none" stroke="#ffc25c" stroke-width="1.6"
+          stroke-dasharray="5 4" marker-end="url(#bcArrow)" opacity=".7"/>
+    <path d="M660,-26 C420,26 90,8 80,-86" fill="none" stroke="#ffc25c" stroke-width="1.6"
+          stroke-dasharray="5 4" marker-end="url(#bcArrow)" opacity=".55"/>
+  </g>
+</svg>

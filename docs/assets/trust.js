@@ -37,12 +37,16 @@ function conn() {
   return connection;
 }
 
-/* ---------- tabs ---------- */
-document.querySelectorAll(".tab").forEach((b) =>
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === b));
-    document.querySelectorAll(".tabpane").forEach((p) => p.classList.toggle("on", p.id === "pane-" + b.dataset.tab));
-  }));
+/* ---------- tabs (scoped per group, so sections don't switch each other) ---------- */
+document.querySelectorAll(".tabs").forEach((group) => {
+  const section = group.closest("section") || document;
+  group.querySelectorAll(".tab").forEach((b) =>
+    b.addEventListener("click", () => {
+      group.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === b));
+      const target = "pane-" + b.dataset.tab;
+      section.querySelectorAll(":scope .tabpane").forEach((p) => p.classList.toggle("on", p.id === target));
+    }));
+});
 
 /* ---------- trust levels ---------- */
 const LEVEL_COLORS = { Untrusted: "#ff6b6b", Limited: "#ffc25c", Standard: "#8b93a7", Trusted: "#6ea8ff", Admin: "#46e0c8" };
@@ -454,7 +458,7 @@ $("msgCopyBtn").addEventListener("click", () => {
 $("verifyMsgBtn").addEventListener("click", async () => {
   const raw = $("verText").value;
   const m = raw.match(/—\s*sdn-sig\/1\s+([1-9A-HJ-NP-Za-km-z]{32,44})\s+([A-Za-z0-9_-]{80,90})/);
-  if (!m) { $("verOut").textContent = "No sdn-sig/1 block found in that text."; return; }
+  if (!m) { $("verOut").innerHTML = '<div class="vres bad"><b>No signature found</b><span>That text does not carry a signature block.</span></div>'; return; }
   const [, addr, b64u] = m;
   const text = raw.slice(0, raw.indexOf("— sdn-sig/1")).trim();
   try {
@@ -463,9 +467,9 @@ $("verifyMsgBtn").addEventListener("click", async () => {
     const pub = new PublicKey(addr).toBytes();
     const ok = await verify(sig, new TextEncoder().encode(`${MSG_TAG}\n${text}`), pub);
     $("verOut").innerHTML = ok
-      ? `<span style="color:var(--accent2)">✓ Valid</span> — signed by <code>${addr}</code>`
-      : `<span style="color:var(--danger)">✗ Invalid</span> — signature does not match this text`;
-  } catch (e) { $("verOut").textContent = "Verify failed: " + e.message; }
+      ? `<div class="vres ok"><b>Signature valid</b><span>Signed by <code>${addr}</code>. The text has not been altered.</span></div>`
+      : `<div class="vres bad"><b>Signature invalid</b><span>This text does not match the signature. It was altered, or it was not signed by that key.</span></div>`;
+  } catch (e) { $("verOut").innerHTML = `<div class="vres bad"><b>Could not verify</b><span>${e.message}</span></div>`; }
 });
 
 /* ---------- rules ---------- */
@@ -488,7 +492,7 @@ function renderRules() {
       <div><b>${r.label}</b> <span class="rule-cmp">${r.cmp} ${r.threshold}${r.unit ? " " + r.unit : ""}</span>
       ${parent ? `<small>only if “${parent.label}” passes</small>` : ""}</div>
       <button class="copy rec-del" data-rule="${r.ruleId}">✕</button></div>`;
-  }).join("") : '<p class="rec-empty">No rules yet.</p>';
+  }).join("") : '<p class="rec-empty">No rules yet — tap “Use recommended” to start.</p>';
   $("rulesList").querySelectorAll("[data-rule]").forEach((b) =>
     b.addEventListener("click", () => {
       const id = b.dataset.rule;
