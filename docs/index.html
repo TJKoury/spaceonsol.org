@@ -21,7 +21,7 @@
       <img src="images/space-token-logo.jpg" alt="$SPACE logo" class="brand-logo">
       <span><b>$SPACE</b><small>on Solana</small></span>
     </a>
-    <a href="https://solscan.io/account/tjkoury.sol" target="_blank" rel="noopener" class="sol-chip" title="View tjkoury.sol on Solscan">tjkoury.sol</a>
+    <a href="https://www.sns.id/domain/tjkoury" target="_blank" rel="noopener" class="sol-chip" title="tjkoury.sol on SNS">tjkoury.sol</a>
   </div>
   <div class="nav-links">
     <a href="#token">Token</a>
@@ -132,83 +132,191 @@
 
 <!-- ============ ADVERSARIAL SECURITY ============ -->
 <section id="adversarial" class="section">
-  <div class="container narrow">
-    <h2 class="section-title">Adversarial Security, explained simply</h2>
-    <p class="section-sub">
-      Based on the whitepaper
-      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">
-      <i>Persistent Adversarial Security — Game-Theoretic Key Integrity Through Blockchain Economics</i></a>
-      by DigitalArsenal. This is the plain-English version.
+  <article class="article">
+    <header class="art-head">
+      <span class="art-kicker">The idea behind $SPACE</span>
+      <h2>Why we let attackers guard the keys</h2>
+      <p class="art-standfirst">
+        Every secure system on the internet rests on someone's promise that a key hasn't been stolen.
+        Adversarial Security replaces the promise with a number anyone can check.
+      </p>
+      <p class="art-byline">
+        A plain-English reading of
+        <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">
+        <i>Persistent Adversarial Security — Game-Theoretic Key Integrity Through Blockchain Economics</i></a>
+      </p>
+    </header>
+
+    <figure class="fig fig-right">
+      <img src="images/shield.svg" alt="Adversarial Security shield">
+      <figcaption>The whitepaper's mark. Security not <i>despite</i> adversaries, but <i>because</i> of them.</figcaption>
+    </figure>
+
+    <h3>The promise that keeps breaking</h3>
+    <p>
+      When you load a bank's website or install a signed update, you're trusting a <b>key</b> — a piece of
+      cryptography asserting "this really came from them." You don't verify that yourself. A
+      <b>certificate authority</b> vouches for it.
+    </p>
+    <p>
+      The trouble is that certificate authorities get breached. In 2011 attackers took the seeds behind
+      <a href="https://www.wired.com/story/the-full-story-of-the-stunning-rsa-hack-can-finally-be-told/" target="_blank" rel="noopener">RSA's SecurID tokens</a>,
+      undermining two-factor authentication at defense contractors worldwide. The Dutch CA
+      <a href="https://en.wikipedia.org/wiki/DigiNotar" target="_blank" rel="noopener">DigiNotar</a> was compromised
+      and used to issue fraudulent Google certificates against Iranian users; it went bankrupt within
+      two months. <a href="https://arstechnica.com/information-technology/2017/09/chrome-to-distrust-symantec-certificates-2018/" target="_blank" rel="noopener">Symantec</a>
+      mis-issued thousands of certificates and lost its place in Chrome. In 2023 China-based actors
+      <a href="https://cyberscoop.com/microsoft-china-signing-key" target="_blank" rel="noopener">stole a Microsoft signing key</a>
+      and forged access tokens for government email. SSLMate keeps a
+      <a href="https://sslmate.com/resources/certificate_authority_failures" target="_blank" rel="noopener">running timeline</a>
+      of these failures, and it is not short.
+    </p>
+    <p>
+      Each breach shares a shape. Trust was <b>asserted</b>, not measured. When one authority fell, every
+      certificate it ever issued became suspect — and nobody could tell <i>when</i> it went bad. Revocation
+      lists lag compromise by weeks.
     </p>
 
-    <h3 class="h-sub">The problem</h3>
+    <aside class="pullquote">
+      There is no way to measure how much trust a certificate deserves. It either exists or it doesn't.
+    </aside>
+
+    <h3>The people guarding the keys are paid the least</h3>
     <p>
-      When you connect to a website or send a signed message, you trust a <b>key</b> — a piece of cryptography that
-      says "this really came from them." Today that trust is handed out by <b>certificate authorities</b>: central
-      companies that issue certificates. The trouble is those companies get hacked. RSA, Microsoft, DigiNotar,
-      Symantec — all breached. And when one falls, every certificate it ever issued becomes suspect. You usually
-      can't even tell how much trust a certificate deserves, or how long ago it went bad.
+      The whitepaper makes a point most security writing skips. The people who administer sensitive systems
+      are often the lowest-paid staff in the organization. The
+      <a href="https://en.wikipedia.org/wiki/2015_Office_of_Personnel_Management_data_breach" target="_blank" rel="noopener">2015 OPM breach</a>
+      exposed security-clearance files on <b>21.5 million people</b> — administered by contractors on modest
+      salaries, guarding data whose loss was measured in billions and in national-security harm.
+    </p>
+    <p>
+      When a key's value is invisible, organizations rationally underinvest in protecting it. Attach real
+      money to that key and the incentive corrects itself: nobody runs a wallet holding ten million dollars
+      on a default password.
     </p>
 
-    <h3 class="h-sub">The idea</h3>
+    <figure class="fig fig-left">
+      <img src="images/flow.svg" alt="Protocol flow: public key, derive addresses, deposit value, monitor balance, infer integrity">
+      <figcaption>The whole protocol: derive addresses from the key, fund them, watch the balance.</figcaption>
+    </figure>
+
+    <h3>The move: put money on the key</h3>
     <p>
-      Adversarial Security asks a sharp question: <b>what if the safest way to prove a key hasn't been hacked is
-      to leave real money sitting on it?</b>
+      A signing key can mathematically <i>derive</i> wallet addresses across many blockchains, using the
+      hierarchical-deterministic standards
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki" target="_blank" rel="noopener">BIP-32</a>,
+      <a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki" target="_blank" rel="noopener">BIP-44</a> and
+      <a href="https://github.com/satoshilabs/slips/blob/master/slip-0010.md" target="_blank" rel="noopener">SLIP-10</a>.
+      The same key that signs your data controls those addresses. One key pair, two jobs, no new infrastructure.
     </p>
     <p>
-      A signing key can mathematically <i>derive</i> wallet addresses on many blockchains (Bitcoin, Ethereum,
-      Solana, and more) — the same key that signs your data also controls those addresses. So you deposit funds at
-      those addresses. Now the key has a public, visible bounty on it.
+      So you deposit funds there. The key now carries a public bounty — and
+      <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noopener">Bitcoin</a> and its successors
+      make that balance auditable by anyone, every block, forever.
     </p>
 
-    <h3 class="h-sub">Why it works</h3>
+    <h3>Why an attacker gives themselves away</h3>
     <p>
-      If an attacker ever steals the private key, the smartest thing they can do is <b>drain the funds immediately</b>.
-      Stealing is instant, irreversible, and carries no extra risk — they already have the key. And if multiple
-      attackers hold the same stolen key, they race each other to grab it first, so drainage happens fast.
+      If someone steals the private key, the rational move is to <b>drain the funds immediately</b>. Withdrawal
+      is instant, irreversible, and carries no additional risk — they already have the key. If several
+      attackers hold the same stolen key, they race each other, which only makes it faster.
     </p>
-    <p>
-      That means the reverse is also true: <b>if the money is still there, the key is still safe.</b> You don't need
-      to take a company's word for it — you just look at the blockchain. Every block, anyone can check the balance
-      and see, in real time, that nobody has robbed it.
-    </p>
+    <p>So the contrapositive is the security property:</p>
 
     <div class="callout">
       <div class="callout-row"><span class="callout-num">1</span><div>
-        <b>Money still on the key</b> → key is intact. The funds are public proof, updated every block.
-      </div></div>
+        <b>The money is still there</b> → the key is intact. Public proof, refreshed every block.</div></div>
       <div class="callout-row"><span class="callout-num">2</span><div>
-        <b>Money gone</b> → key was compromised — and you knew the instant it happened, not weeks later.
-      </div></div>
+        <b>The money is gone</b> → the key was compromised, and you knew the moment it happened.</div></div>
       <div class="callout-row"><span class="callout-num">3</span><div>
-        <b>How long it's sat there</b> → how long the key has provably been safe. Time is evidence certificates can't give you.
-      </div></div>
+        <b>How long it has sat untouched</b> → how long the key has provably been safe. Certificates cannot
+        give you that axis.</div></div>
     </div>
 
-    <h3 class="h-sub">"Adversarial" — turning attackers into the alarm system</h3>
+    <figure class="fig fig-right">
+      <img src="images/pillars.svg" alt="Four pillars: key derivation, value as signal, rational actors, real-time proof">
+      <figcaption>Four pillars: derivation, value as signal, rational actors, real-time verification.</figcaption>
+    </figure>
+
+    <h3>Recruiting your enemies</h3>
     <p>
-      Anyone can <b>raise the stakes</b> on a key they need to trust. A hospital that depends on a vendor's signing
-      key can deposit funds at that key's addresses — no permission needed — and even publish a public
-      <b>bounty</b> telling the world what the key is for and when more money is coming. That invitation goes out
-      to the most capable attackers alive: hacker collectives, nation-states, organized crime. If <i>they</i> can't
-      drain it, the key's integrity is proven against the strongest threat actors on Earth. The name fits —
-      security isn't achieved <i>despite</i> adversaries, but <i>because</i> of them.
+      Here is the inversion the name points at. Because derived addresses are permissionless,
+      <b>anyone can raise the stakes on a key they need to trust</b> — no permission required. A hospital
+      depending on a device vendor's signing key can fund that key's addresses directly.
+    </p>
+    <p>
+      They can go further and publish a <b>bounty</b>: here is the key, here is what it protects, here is when
+      more money arrives. That invitation reaches the people most able to break it — hacker collectives,
+      nation-state operators, organized crime. If <i>they</i> cannot drain it, the key's integrity has been
+      demonstrated against the most capable adversaries on Earth.
     </p>
 
-    <h3 class="h-sub">What this has to do with $SPACE</h3>
+    <aside class="pullquote">
+      Security is not provided despite adversaries. It is provided because of them.
+    </aside>
+
+    <h3>The economics underneath</h3>
     <p>
-      The Space Data Network is built on this exact idea. Its nodes, signed data, and identities rely on keys whose
-      integrity is proven by visible, on-chain value — not by a certificate a company swore was fine. $SPACE is the
-      native expression of that value: the token that lets participants bond, signal trust, and put skin in the game
-      across the network. When you hold or use $SPACE, you're interacting with a system where <b>trust is measured in
-      money on a public ledger, not in paperwork</b>.
+      The bond works as a <b>costly signal</b>, in the sense biologist Amotz Zahavi gave the term with the
+      <a href="https://doi.org/10.1016/0022-5193(75)90111-3" target="_blank" rel="noopener">handicap principle</a>:
+      the expense is exactly what makes it believable. It is also
+      <a href="https://en.wikipedia.org/wiki/Skin_in_the_Game_(book)" target="_blank" rel="noopener">skin in the game</a>
+      in Nassim Taleb's sense — the claimant carries real downside for their own claim.
+    </p>
+    <p>
+      Requiring funds across several independent chains raises the bar again: a forger must hold real assets
+      on each one, with different address formats, fees and liquidity. Honest actors with long horizons fund
+      the bond because trust pays back. Hit-and-run actors find it too expensive. The two populations separate.
+    </p>
+
+    <figure class="fig fig-left">
+      <img src="images/nash.svg" alt="Nash equilibrium payoff matrix">
+      <figcaption>Funding the bond is the dominant strategy for honest actors — and only for them.</figcaption>
+    </figure>
+
+    <p>
+      Within an organization the same logic runs sideways. Shared reputation means one person's compromised
+      key lowers everyone's score, which is a live incentive to police each other — the peer enforcement
+      Elinor Ostrom documented in
+      <a href="https://en.wikipedia.org/wiki/Governing_the_Commons" target="_blank" rel="noopener">Governing the Commons</a>.
+    </p>
+
+    <h3>It does not replace PKI. It anchors it.</h3>
+    <p>
+      An <a href="https://datatracker.ietf.org/doc/html/rfc5280" target="_blank" rel="noopener">X.509 certificate</a>
+      can be bound to a blockchain identity by signing the certificate's public key with the crypto private
+      key and embedding that signature as a certificate extension. Anyone can then walk the chain:
+      certificate → signature → crypto public key → derived addresses → observable balance.
+    </p>
+    <p>
+      That binding prevents <b>identity splitting</b>, where an adversary presents a legitimate certificate and
+      a legitimate wallet as belonging to different entities, playing separate trust games with each.
+    </p>
+
+    <figure class="fig fig-right">
+      <img src="images/trust-decay.svg" alt="Trust decay curve as keys age">
+      <figcaption>Trust decays as a key ages, creating pressure to rotate before expiry.</figcaption>
+    </figure>
+
+    <h3>What this has to do with $SPACE</h3>
+    <p>
+      The <a href="https://spacedatanetwork.org" target="_blank" rel="noopener">Space Data Network</a> is built on
+      this model. Its nodes, signed data products and identities rest on keys whose integrity is evidenced by
+      visible on-chain value rather than by a certificate someone swore was fine.
+    </p>
+    <p>
+      <b>$SPACE</b> is the native expression of that value — the asset participants use to bond, to signal
+      trust in each other, and to put skin in the game across the network. You can watch it happen on the
+      <a href="trust.html">live trust graph</a>, where every transfer is a trust edge and every balance is an
+      argument.
     </p>
 
     <p class="read-more">
-      Want the full formal treatment — Nash equilibria, separating equilibria, PKI binding, key-rotation trust decay?
-      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Read the whitepaper on GitHub →</a>
+      The full paper carries the formal treatment — Nash equilibria, separating equilibria, the threat model,
+      X.509 binding and key-rotation decay.
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Read it on GitHub →</a>
     </p>
-  </div>
+  </article>
 </section>
 
 <!-- ============ SPACE DATA NETWORK ============ -->

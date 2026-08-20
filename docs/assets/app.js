@@ -20,17 +20,29 @@ document.querySelectorAll(".copy").forEach((btn) => {
 });
 
 // ---- Formatting helpers ----
-const fmtUsd = (n, full = false) =>
-  n == null ? "—" :
-  full ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) :
-  n >= 1 ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 4 }) :
-  "$" + n.toPrecision(4);
+// Sub-penny prices use the crypto subscript convention: $0.0(4)8632 means
+// four zeros after the decimal point, so 0.00008632.
+function fmtPrice(n) {
+  if (n == null || !isFinite(n)) return "—";
+  if (n >= 1) return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (n >= 0.01) return "$" + n.toFixed(4);
+  const exp = Math.floor(Math.log10(n));          // e.g. -5 for 8.6e-5
+  const zeros = Math.abs(exp) - 1;                // zeros between "0." and first digit
+  const digits = Math.round(n * Math.pow(10, Math.abs(exp) + 3));
+  return `$0.0<sub>${zeros}</sub>${digits}`;
+}
 
 const fmtCompact = (n) =>
-  n == null ? "—" :
+  n == null || !isFinite(n) ? "—" :
+  n >= 1e9 ? "$" + (n / 1e9).toFixed(2) + "B" :
   n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" :
   n >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "K" :
   "$" + n.toFixed(0);
+
+const fmtNum = (n) =>
+  n == null ? "—" :
+  n >= 1e6 ? (n / 1e6).toFixed(1) + "M" :
+  n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n);
 
 // ---- Live data from DexScreener ----
 async function loadMarket() {
@@ -47,10 +59,11 @@ async function loadMarket() {
     const buys = p.txns && p.txns.h24 ? p.txns.h24.buys : null;
     const sells = p.txns && p.txns.h24 ? p.txns.h24.sells : null;
 
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerHTML = v; };
+    const setCls = (id, cls) => { const el = document.getElementById(id); if (el) el.className = "stat-num " + cls; };
 
     // hero
-    set("priceUsd", fmtUsd(price));
+    set("priceUsd", fmtPrice(price));
     set("mcap", fmtCompact(mcap));
     set("liq", fmtCompact(liq));
     const pcEl = document.getElementById("priceChange");
@@ -59,12 +72,13 @@ async function loadMarket() {
       pcEl.className = "price-change " + (chg >= 0 ? "up" : "down");
     }
     // stats
-    set("s-price", fmtUsd(price));
+    set("s-price", fmtPrice(price));
     set("s-mcap", fmtCompact(mcap));
     set("s-liq", fmtCompact(liq));
     set("s-vol", fmtCompact(vol));
-    set("s-holders", buys != null ? buys + " / " + sells : "—");
+    set("s-holders", buys != null ? fmtNum(buys) + " / " + fmtNum(sells) : "—");
     set("s-change", chg != null ? (chg >= 0 ? "+" : "") + chg.toFixed(1) + "%" : "—");
+    if (chg != null) setCls("s-change", chg >= 0 ? "up" : "down");
   } catch (e) {
     console.warn("market data load failed", e);
   }

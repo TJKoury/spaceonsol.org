@@ -25,6 +25,9 @@ img{max-width:100%;display:block}
 .section-sub{color:var(--muted);text-align:center;max-width:620px;margin:0 auto 48px;font-size:1.05rem}
 .section-sub b{color:var(--txt)}
 .h-sub{font-size:1.25rem;font-weight:700;margin:36px 0 10px;color:var(--accent2)}
+.container.narrow p{margin-bottom:18px;color:#c8d0de;line-height:1.75}
+.container.narrow p:last-child{margin-bottom:0}
+.container.narrow p b{color:var(--txt)}
 
 /* ============ NAV ============ */
 #nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;
@@ -80,10 +83,18 @@ img{max-width:100%;display:block}
 
 /* ============ STATS GRID ============ */
 .grid{display:grid;gap:18px}
-.stats-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:36px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;text-align:center}
-.stat-num{display:block;font-size:1.7rem;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums}
-.stat-lbl{display:block;font-size:.78rem;color:var(--muted);margin-top:6px;letter-spacing:.03em}
+.stats-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:36px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 14px;text-align:center;
+  min-height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  transition:border-color .2s}
+.stat:hover{border-color:var(--line2)}
+.stat-num{display:block;font-weight:800;color:var(--txt);font-variant-numeric:tabular-nums;
+  font-size:clamp(1.05rem,2.1vw,1.5rem);letter-spacing:-.02em;line-height:1.15;white-space:nowrap;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.stat-num.up{color:var(--accent2)}
+.stat-num.down{color:var(--danger)}
+.stat-num sub{font-size:.62em;vertical-align:baseline;position:relative;bottom:-.18em;opacity:.85;font-weight:700}
+.stat-lbl{display:block;font-size:.74rem;color:var(--muted);letter-spacing:.03em;line-height:1.2;white-space:nowrap}
 
 .contract-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px 30px}
 .contract-box h3{font-size:1.1rem;margin-bottom:18px;color:var(--accent2)}
@@ -287,6 +298,43 @@ label input::placeholder,.t-adv input::placeholder{color:var(--dim)}
   .graph-card{height:400px}
   .row2{grid-template-columns:1fr}
   .graph-tools{position:static;padding:10px;justify-content:center;border-top:1px solid var(--line)}
+}
+
+
+/* ============ ARTICLE (Adversarial Security) ============ */
+.article{max-width:740px;margin:0 auto;padding:0 24px;font-size:1.06rem;line-height:1.78}
+.art-head{margin-bottom:38px;text-align:center}
+.art-kicker{display:inline-block;font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent2);margin-bottom:14px}
+.art-head h2{font-size:clamp(1.9rem,4.6vw,2.8rem);font-weight:800;letter-spacing:-.03em;line-height:1.12;margin-bottom:16px}
+.art-standfirst{font-size:1.16rem;color:var(--muted);line-height:1.62;max-width:600px;margin:0 auto 18px}
+.art-byline{font-size:.86rem;color:var(--dim);padding-top:16px;border-top:1px solid var(--line)}
+.article h3{font-size:1.32rem;font-weight:750;letter-spacing:-.015em;margin:44px 0 14px;color:var(--txt)}
+.article p{margin-bottom:20px;color:#c8d0de}
+.article p b{color:var(--txt);font-weight:650}
+.article a{color:var(--accent);text-decoration:underline;text-decoration-color:rgba(110,168,255,.35);
+  text-underline-offset:3px;transition:text-decoration-color .15s}
+.article a:hover{text-decoration-color:var(--accent);opacity:1}
+
+/* floated figures — text wraps around */
+.fig{margin:6px 0 20px;width:290px;background:#f7f8fa;border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:18px 18px 12px;box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.fig img{width:100%;height:auto;display:block}
+.fig figcaption{font-size:.76rem;line-height:1.5;color:#5c6478;margin-top:12px;padding-top:10px;
+  border-top:1px solid rgba(0,0,0,.08)}
+.fig-right{float:right;margin-left:30px;clear:right}
+.fig-left{float:left;margin-right:30px;clear:left}
+
+.pullquote{clear:both;margin:34px 0;padding:22px 0 22px 26px;border-left:3px solid var(--accent2);
+  font-size:1.28rem;line-height:1.5;font-weight:600;letter-spacing:-.015em;color:var(--txt)}
+.article .callout{clear:both}
+.article .read-more{clear:both;margin-top:44px}
+
+@media(max-width:720px){
+  .fig{float:none;width:100%;margin:24px 0}
+  .fig-right,.fig-left{margin-left:0;margin-right:0}
+  .article{font-size:1rem}
+  .pullquote{font-size:1.12rem;padding-left:18px}
 }
 
 /* ============ RESPONSIVE ============ */
