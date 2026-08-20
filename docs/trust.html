@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trust Graph — $SPACE</title>
+<meta name="description" content="A live trust graph built from real on-chain $SPACE transfers, with a composable trust-rule engine.">
+<link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav id="nav">
+  <div class="brand-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/space-token-logo.jpg" alt="$SPACE" class="brand-logo">
+      <span><b>$SPACE</b><small>trust graph</small></span>
+    </a>
+    <a href="https://solscan.io/account/tjkoury.sol" target="_blank" rel="noopener" class="sol-chip" title="View tjkoury.sol on Solscan">tjkoury.sol</a>
+  </div>
+  <div class="nav-links">
+    <a href="#graph-sec">Graph</a>
+    <a href="#act">Trust</a>
+    <a href="#rules">Rules</a>
+    <a href="#vault">Backup</a>
+    <button id="connectBtn" class="cta connect-cta">Connect wallet</button>
+  </div>
+  <button id="menu-btn" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+</nav>
+
+<!-- ========== 1 · GRAPH ========== -->
+<section id="graph-sec" class="tsec tsec-first">
+  <div class="wrap">
+    <h1 class="t-h1">The $SPACE Trust Graph</h1>
+    <p class="t-lead">Real transfers, read live from Solana. Value moving to a key is the signal that the key is worth trusting.</p>
+
+    <div class="t-stats">
+      <div><b id="n-wallets">—</b><span>wallets</span></div>
+      <div><b id="n-edges">—</b><span>transfers</span></div>
+      <div><b id="n-volume">—</b><span>$SPACE moved</span></div>
+      <div><b id="n-price">—</b><span>price</span></div>
+      <div><b id="n-mcap">—</b><span>market cap</span></div>
+      <div><b id="n-supply">—</b><span>supply</span></div>
+    </div>
+
+    <div class="graph-card">
+      <canvas id="graph"></canvas>
+      <div class="graph-empty" id="graphEmpty"><div class="spinner"></div><span>Reading transfers…</span></div>
+      <div class="graph-legend">
+        <span><i style="background:#46e0c8"></i>you</span>
+        <span><i style="background:#6ea8ff"></i>wallet</span>
+        <span><i style="background:#c98bff"></i>pool</span>
+        <span><i class="ln"></i>flow</span>
+        <span><i class="ln rev"></i>revoked</span>
+      </div>
+      <div class="graph-tools">
+        <button id="moreBtn" class="mini">Load more</button>
+        <button id="reloadBtn" class="mini">Reload</button>
+        <button id="myHistoryBtn" class="mini" disabled>My transfers</button>
+      </div>
+    </div>
+    <p class="t-note" id="syncInfo">Loading…</p>
+    <details class="t-adv">
+      <summary>Use a custom RPC endpoint</summary>
+      <input id="rpc" placeholder="https://solana-rpc.publicnode.com (default) — a Helius/QuickNode key loads far more history">
+    </details>
+  </div>
+</section>
+
+<!-- ========== 2 · ACT ========== -->
+<section id="act" class="tsec alt">
+  <div class="wrap narrow">
+    <h2 class="t-h2">Vouch, or take it back</h2>
+    <p class="t-lead">Sending $SPACE is a trust assertion. Revoking withdraws it.</p>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="give">Give trust</button>
+      <button class="tab" data-tab="revoke">Revoke trust</button>
+    </div>
+
+    <div class="tabpane on" id="pane-give">
+      <div class="row2">
+        <label>Wallet you trust<input id="toAddr" placeholder="Solana address"></label>
+        <label>Amount<input id="amount" type="number" min="0" step="any" placeholder="1000"></label>
+      </div>
+      <label>Note <span class="hint">stored locally, never broadcast</span><input id="note" placeholder="Why you trust them"></label>
+      <button id="sendBtn" class="btn btn-primary" disabled>Send $SPACE</button>
+      <p class="t-note">Signs a real SPL transfer in your wallet and writes a <b>TRE</b> record locally.</p>
+    </div>
+
+    <div class="tabpane" id="pane-revoke">
+      <label>Wallet to revoke<input id="revokeAddr" placeholder="Solana address"></label>
+      <div class="row2">
+        <label>Reason<select id="revokeReason"></select></label>
+        <label>Note<input id="revokeNote" placeholder="Optional"></label>
+      </div>
+      <button id="revokeBtn" class="btn btn-danger">Revoke trust</button>
+      <p class="t-note">Writes a <b>TNR</b> record, marks the matching TRE revoked, and dashes the edge in the graph.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3 · RULES ========== -->
+<section id="rules" class="tsec">
+  <div class="wrap">
+    <h2 class="t-h2">Trust rule engine</h2>
+    <p class="t-lead">
+      Rules compose. Each one tests a signal from the Adversarial Security model; a rule can
+      <b>depend on</b> another, so it only applies once its prerequisite passes. Together they form a policy
+      that scores any key.
+    </p>
+
+    <div class="rules-grid">
+      <div class="card">
+        <h3>Add a rule</h3>
+        <label>Rule<select id="ruleType"></select></label>
+        <div class="row2">
+          <label>Threshold<input id="ruleThreshold" type="number" step="any"></label>
+          <label>Mode<select id="ruleMode">
+            <option value="SCORE">Score — weighted</option>
+            <option value="REQUIRE">Require — hard gate</option>
+          </select></label>
+        </div>
+        <div class="row2">
+          <label>Weight<input id="ruleWeight" type="number" min="1" value="1"></label>
+          <label>Only if<select id="ruleDep"><option value="">— always apply —</option></select></label>
+        </div>
+        <button id="addRuleBtn" class="btn btn-primary">Add rule</button>
+        <p class="t-note">Saved as a <b>TRP</b> policy record. <span class="tag-proposed">proposed schema</span></p>
+      </div>
+
+      <div class="card">
+        <h3>Policy <span id="ruleCount" class="muted-count">0 rules</span></h3>
+        <div id="rulesList" class="rules-list"><p class="rec-empty">No rules yet — add one, or load a preset.</p></div>
+        <div class="preset-row">
+          <button id="presetBtn" class="mini">Load whitepaper preset</button>
+          <button id="clearRulesBtn" class="mini">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Evaluate a key</h3>
+        <label>Wallet<input id="evalAddr" placeholder="Solana address"></label>
+        <button id="evalBtn" class="btn btn-primary">Evaluate</button>
+        <div id="evalOut" class="eval-out"><p class="rec-empty">Run an evaluation to see the score.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4 · VAULT ========== -->
+<section id="vault" class="tsec alt">
+  <div class="wrap narrow">
+    <h2 class="t-h2">Your records</h2>
+    <p class="t-lead">
+      Everything above is stored <b>locally in your browser</b> by default — nothing leaves this page until you back it up.
+    </p>
+
+    <div class="vault-bar">
+      <div class="vault-count"><b id="recCount">0</b> records</div>
+      <div class="vault-btns">
+        <button id="dlBtn" class="mini strong">Download</button>
+        <button id="ipfsBtn" class="mini">IPFS</button>
+        <button id="s3Btn" class="mini">S3</button>
+        <button id="gdBtn" class="mini">Drive</button>
+        <button id="importBtn" class="mini">Import</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </div>
+    <div id="backupOut" class="backup-out"></div>
+
+    <details class="t-adv">
+      <summary>Backup settings</summary>
+      <div class="bset">
+        <label>IPFS API endpoint <span class="hint">a local Kubo node works</span><input id="ipfsApi" placeholder="http://127.0.0.1:5001"></label>
+        <label>IPFS pinning token <span class="hint">optional — Pinata JWT, kept in memory only</span><input id="ipfsToken" type="password" placeholder="Scoped JWT"></label>
+        <label>S3 presigned PUT URL <span class="hint">keeps your AWS keys off this page — <code>aws s3 presign --method PUT s3://bucket/key.json</code></span><input id="s3Url" placeholder="https://bucket.s3.amazonaws.com/…"></label>
+        <label>Google OAuth client ID <span class="hint">token stays in this tab</span><input id="gdClient" placeholder="xxxxx.apps.googleusercontent.com"></label>
+      </div>
+    </details>
+
+    <details class="t-adv">
+      <summary>Browse records</summary>
+      <div id="recordsList" class="records-list"><p class="rec-empty">No records yet.</p></div>
+      <div class="preset-row">
+        <button id="captureBtn" class="mini">Capture graph transfers as TRE</button>
+        <button id="wipeBtn" class="mini">Clear local</button>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p><b>$SPACE</b> — the trust layer for New Space.</p>
+    <p class="footer-sub">
+      <a href="index.html">Home</a> ·
+      <a href="https://spacedatastandards.org" target="_blank" rel="noopener">Space Data Standards</a> ·
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Adversarial Security</a>
+    </p>
+    <p class="footer-mini">Chain data from Solana RPC · market data from DexScreener · not financial advice</p>
+  </div>
+</footer>
+
+<div id="toast" class="toast"></div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script type="module" src="assets/trust.js"></script>
+</body>
+</html>

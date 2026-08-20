@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>$SPACE — The trust layer for New Space, on Solana</title>
+<meta name="description" content="Trust, priced in real time. $SPACE is the trust layer for New Space — a token on the open protocol securing the Space Data Network, running on Solana.">
+<meta property="og:title" content="$SPACE — Trust, priced in real time">
+<meta property="og:description" content="The trust layer for New Space — a token on the open protocol securing the Space Data Network, on Solana.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="images/space-token-logo.jpg">
+<link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav id="nav">
+  <div class="brand-wrap">
+    <a href="#top" class="brand">
+      <img src="images/space-token-logo.jpg" alt="$SPACE logo" class="brand-logo">
+      <span><b>$SPACE</b><small>on Solana</small></span>
+    </a>
+    <a href="https://solscan.io/account/tjkoury.sol" target="_blank" rel="noopener" class="sol-chip" title="View tjkoury.sol on Solscan">tjkoury.sol</a>
+  </div>
+  <div class="nav-links">
+    <a href="#token">Token</a>
+    <a href="#about">About</a>
+    <a href="#adversarial">Adversarial Security</a>
+    <a href="#network">Space Data Network</a>
+    <a href="trust.html">Trust Graph</a>
+    <a href="#links">Links</a>
+    <a href="#buy" class="cta">Get $SPACE</a>
+  </div>
+  <button id="menu-btn" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header id="top" class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <img src="images/space-token-logo.jpg" alt="$SPACE" class="hero-logo">
+    <h1>$SPACE</h1>
+    <p class="tagline"><b>Trust, priced in real time.</b><br>The trust layer for New Space — a token running on the open protocol that secures the <a href="https://spacedatanetwork.org" target="_blank" rel="noopener">Space Data Network</a>, on Solana.</p>
+    <div class="hero-price">
+      <div class="price-card">
+        <span class="price-usd" id="priceUsd">—</span>
+        <span class="price-label">USD / $SPACE</span>
+        <span class="price-change" id="priceChange">—</span>
+      </div>
+      <div class="price-card">
+        <span class="mcap" id="mcap">—</span>
+        <span class="price-label">Market Cap</span>
+      </div>
+      <div class="price-card">
+        <span class="liq" id="liq">—</span>
+        <span class="price-label">Liquidity</span>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <a href="#buy" class="btn btn-primary">Get $SPACE</a>
+      <a href="https://x.com/tjkoury" target="_blank" rel="noopener" class="btn btn-ghost">Follow @tjkoury →</a>
+    </div>
+    <div class="hero-mint">
+      <span>Contract</span>
+      <code id="mint">Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F</code>
+      <button class="copy" data-copy="Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F">Copy</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TOKEN ============ -->
+<section id="token" class="section">
+  <div class="container">
+    <h2 class="section-title">The Token</h2>
+    <p class="section-sub">$SPACE is the personal token of <b>tjkoury.sol</b>, launched on <a href="https://ansem.io/launch/coin/Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F" target="_blank" rel="noopener">ansem.io</a> and trading on PumpSwap (Solana).</p>
+
+    <div class="grid stats-grid">
+      <div class="stat"><span class="stat-num" id="s-price">—</span><span class="stat-lbl">Price (USD)</span></div>
+      <div class="stat"><span class="stat-num" id="s-mcap">—</span><span class="stat-lbl">Market Cap</span></div>
+      <div class="stat"><span class="stat-num" id="s-liq">—</span><span class="stat-lbl">Liquidity</span></div>
+      <div class="stat"><span class="stat-num" id="s-vol">—</span><span class="stat-lbl">24h Volume</span></div>
+      <div class="stat"><span class="stat-num" id="s-holders">—</span><span class="stat-lbl">24h Buys / Sells</span></div>
+      <div class="stat"><span class="stat-num" id="s-change">—</span><span class="stat-lbl">24h Change</span></div>
+    </div>
+
+    <div class="contract-box">
+      <h3>Token details</h3>
+      <table class="kv">
+        <tr><th>Name</th><td>SPACEDATANETWORK</td></tr>
+        <tr><th>Symbol</th><td>$SPACE</td></tr>
+        <tr><th>Chain</th><td>Solana</td></tr>
+        <tr><th>Dex</th><td>PumpSwap</td></tr>
+        <tr><th>Pair</th><td>$SPACE / SOL</td></tr>
+        <tr><th>Owner</th><td><a href="https://x.com/tjkoury" target="_blank" rel="noopener">tjkoury.sol (@tjkoury)</a></td></tr>
+        <tr><th>Mint address</th><td><code>Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F</code> <button class="copy" data-copy="Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F">Copy</button></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ABOUT ============ -->
+<section id="about" class="section section-alt">
+  <div class="container narrow">
+    <h2 class="section-title">What is $SPACE?</h2>
+    <p>
+      <b>$SPACE</b> is the personal token of <b>tjkoury.sol</b> — the builder behind the
+      <a href="https://spacedatanetwork.org" target="_blank" rel="noopener">Space Data Network</a>, a decentralized
+      peer-to-peer network for global space situational awareness (SSA), and the author of the
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Adversarial Security</a>
+      whitepaper on game-theoretic key integrity.
+    </p>
+    <p>
+      It isn't a meme looking for a use case. It's a use case with a token. $SPACE puts a measurable, on-chain
+      price on the trust that holds the Space Data Network together — turning the network's own economic
+      security model into a tradeable asset. Holding $SPACE is, in effect, backing the infrastructure the
+      network runs on.
+    </p>
+    <p>
+      Earth's orbit is getting crowded. Decades of launches have left tens of thousands of tracked objects — and
+      far more untracked debris — circling the planet. The 2009 collision between Iridium&nbsp;33 and Cosmos&nbsp;2251
+      at <b>11.7&nbsp;km/s</b> created the largest accidental debris cloud in history, and today operators face
+      <b>~50,000 conjunction warnings per day</b>. The Space Data Network exists so that the people who need to
+      share orbital data can do it openly, securely, and without depending on any single government or company.
+    </p>
+    <p>
+      $SPACE is how that ecosystem coordinates and rewards participation — and how tjkoury.sol puts
+      real skin in the game for the work behind it.
+    </p>
+  </div>
+</section>
+
+<!-- ============ ADVERSARIAL SECURITY ============ -->
+<section id="adversarial" class="section">
+  <div class="container narrow">
+    <h2 class="section-title">Adversarial Security, explained simply</h2>
+    <p class="section-sub">
+      Based on the whitepaper
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">
+      <i>Persistent Adversarial Security — Game-Theoretic Key Integrity Through Blockchain Economics</i></a>
+      by DigitalArsenal. This is the plain-English version.
+    </p>
+
+    <h3 class="h-sub">The problem</h3>
+    <p>
+      When you connect to a website or send a signed message, you trust a <b>key</b> — a piece of cryptography that
+      says "this really came from them." Today that trust is handed out by <b>certificate authorities</b>: central
+      companies that issue certificates. The trouble is those companies get hacked. RSA, Microsoft, DigiNotar,
+      Symantec — all breached. And when one falls, every certificate it ever issued becomes suspect. You usually
+      can't even tell how much trust a certificate deserves, or how long ago it went bad.
+    </p>
+
+    <h3 class="h-sub">The idea</h3>
+    <p>
+      Adversarial Security asks a sharp question: <b>what if the safest way to prove a key hasn't been hacked is
+      to leave real money sitting on it?</b>
+    </p>
+    <p>
+      A signing key can mathematically <i>derive</i> wallet addresses on many blockchains (Bitcoin, Ethereum,
+      Solana, and more) — the same key that signs your data also controls those addresses. So you deposit funds at
+      those addresses. Now the key has a public, visible bounty on it.
+    </p>
+
+    <h3 class="h-sub">Why it works</h3>
+    <p>
+      If an attacker ever steals the private key, the smartest thing they can do is <b>drain the funds immediately</b>.
+      Stealing is instant, irreversible, and carries no extra risk — they already have the key. And if multiple
+      attackers hold the same stolen key, they race each other to grab it first, so drainage happens fast.
+    </p>
+    <p>
+      That means the reverse is also true: <b>if the money is still there, the key is still safe.</b> You don't need
+      to take a company's word for it — you just look at the blockchain. Every block, anyone can check the balance
+      and see, in real time, that nobody has robbed it.
+    </p>
+
+    <div class="callout">
+      <div class="callout-row"><span class="callout-num">1</span><div>
+        <b>Money still on the key</b> → key is intact. The funds are public proof, updated every block.
+      </div></div>
+      <div class="callout-row"><span class="callout-num">2</span><div>
+        <b>Money gone</b> → key was compromised — and you knew the instant it happened, not weeks later.
+      </div></div>
+      <div class="callout-row"><span class="callout-num">3</span><div>
+        <b>How long it's sat there</b> → how long the key has provably been safe. Time is evidence certificates can't give you.
+      </div></div>
+    </div>
+
+    <h3 class="h-sub">"Adversarial" — turning attackers into the alarm system</h3>
+    <p>
+      Anyone can <b>raise the stakes</b> on a key they need to trust. A hospital that depends on a vendor's signing
+      key can deposit funds at that key's addresses — no permission needed — and even publish a public
+      <b>bounty</b> telling the world what the key is for and when more money is coming. That invitation goes out
+      to the most capable attackers alive: hacker collectives, nation-states, organized crime. If <i>they</i> can't
+      drain it, the key's integrity is proven against the strongest threat actors on Earth. The name fits —
+      security isn't achieved <i>despite</i> adversaries, but <i>because</i> of them.
+    </p>
+
+    <h3 class="h-sub">What this has to do with $SPACE</h3>
+    <p>
+      The Space Data Network is built on this exact idea. Its nodes, signed data, and identities rely on keys whose
+      integrity is proven by visible, on-chain value — not by a certificate a company swore was fine. $SPACE is the
+      native expression of that value: the token that lets participants bond, signal trust, and put skin in the game
+      across the network. When you hold or use $SPACE, you're interacting with a system where <b>trust is measured in
+      money on a public ledger, not in paperwork</b>.
+    </p>
+
+    <p class="read-more">
+      Want the full formal treatment — Nash equilibria, separating equilibria, PKI binding, key-rotation trust decay?
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Read the whitepaper on GitHub →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ============ SPACE DATA NETWORK ============ -->
+<section id="network" class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">The Space Data Network</h2>
+    <p class="section-sub">The real-world project $SPACE powers. <a href="https://spacedatanetwork.org" target="_blank" rel="noopener">spacedatanetwork.org →</a></p>
+
+    <div class="grid features-grid">
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="9" r="2.2"/><circle cx="8" cy="18.5" r="2.2"/><circle cx="17.5" cy="18.5" r="2.2"/><path d="M6.9 7.1 17.1 8"/><path d="M6 8.1 7.4 16.4"/><path d="M17.9 10.9 17.6 16.3"/><path d="M10.2 18.5h5.1"/></svg></div>
+        <h3>Built on IPFS &amp; libp2p</h3>
+        <p>Decentralized peer-to-peer data exchange — DHT discovery, GossipSub messaging, and circuit relay so even browsers behind firewalls can connect.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9h17"/><path d="M9 9v11.5"/><path d="M12.2 12.6h5.2"/><path d="M12.2 16.2h5.2"/><circle cx="6.2" cy="6.2" r=".9" fill="currentColor" stroke="none"/></svg></div>
+        <h3>Space Data Standards</h3>
+        <p>CCSDS-compliant schemas (OMM, TLE, TDM, CDM, EPM and more) with zero-copy FlatBuffers serialization — 160+ standardized message types.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 4.6 6v6c0 4.6 3.1 8.1 7.4 9.2 4.3-1.1 7.4-4.6 7.4-9.2V6Z"/><circle cx="12" cy="11" r="2.1"/><path d="M12 13.1v3.1"/></svg></div>
+        <h3>End-to-end security</h3>
+        <p>Noise Protocol transport with forward secrecy, AES-256 field-level encryption at rest, and cryptographic identities via Entity Profile Manifests.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="13" height="10" rx="1.8"/><path d="M6.5 18.2h5.5"/><path d="M9.2 14.5v3.7"/><rect x="16.5" y="9.5" width="5" height="10" rx="1.6"/><path d="M18.4 17.4h1.2"/></svg></div>
+        <h3>Cross-platform</h3>
+        <p>Full nodes on servers, edge relays on embedded devices, or direct browser connections — one stack from cloud to web.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.6"/><ellipse cx="12" cy="12" rx="9.5" ry="4.6" transform="rotate(-28 12 12)"/><circle cx="19.1" cy="8.2" r="1.5" fill="currentColor" stroke="none"/></svg></div>
+        <h3>Open-source astrodynamics</h3>
+        <p>SGP4/SDP4 propagators, observation association, orbit determination, and conjunction assessment — in both Go and WebAssembly.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h17l-1.2 4.2a2 2 0 0 1-1.9 1.4H6.6a2 2 0 0 1-1.9-1.4Z"/><path d="M3.5 7.5 5 4.2h14l1.5 3.3"/><path d="M6.3 13.1v5.1a1.6 1.6 0 0 0 1.6 1.6h8.2a1.6 1.6 0 0 0 1.6-1.6v-5.1"/><path d="M10.3 16.4h3.4"/></svg></div>
+        <h3>Data marketplace</h3>
+        <p>An opt-in commercial layer for premium data and encrypted WASM modules, while core SSA data exchange stays free and open.</p>
+      </div>
+    </div>
+
+    <div class="danger-box">
+      <h3>Why this matters now</h3>
+      <div class="grid danger-grid">
+        <div><b>~50,000</b><span>conjunction warnings / day</span></div>
+        <div><b>~30,000</b><span>tracked objects in orbit (2026)</span></div>
+        <div><b>100+</b><span>avoidance maneuvers / week</span></div>
+        <div><b>100,000+</b><span>satellites planned by 2030</span></div>
+      </div>
+      <p class="danger-note">
+        On Feb 10, 2009, Iridium&nbsp;33 hit Cosmos&nbsp;2251 at 11.7&nbsp;km/s over Siberia — neither operator had
+        warning. With shared infrastructure, that collision could have been avoided with a simple maneuver.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW TO BUY ============ -->
+<section id="buy" class="section">
+  <div class="container narrow">
+    <h2 class="section-title">Get $SPACE</h2>
+    <ol class="steps">
+      <li>
+        <b>Get a Solana wallet.</b> Phantom or Solflare are the easiest — browser extension or mobile app.
+      </li>
+      <li>
+        <b>Fund it with SOL.</b> Buy SOL on any major exchange and send it to your wallet address.
+      </li>
+      <li>
+        <b>Swap SOL → $SPACE.</b> Paste the mint address
+        <code>Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F</code>
+        into a Solana DEX aggregator and swap.
+        <div class="buy-links">
+          <a href="https://jup.ag/swap/SOL-Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Jupiter</a>
+          <a href="https://dexscreener.com/solana/6scs7whhyjy3ujwl1laxbllvsotblcl4ko6vc65c3x8z" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">DexScreener</a>
+          <a href="https://ansem.io/launch/coin/Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">ansem.io</a>
+        </div>
+      </li>
+      <li>
+        <b>Hold, use, or provide liquidity.</b> $SPACE lives on the open PumpSwap pool.
+      </li>
+    </ol>
+    <p class="disclaimer">
+      ⚠️ Crypto is volatile and risky. This site is informational, not financial advice. Do your own research,
+      never invest more than you can afford to lose, and verify the contract address before any swap.
+    </p>
+  </div>
+</section>
+
+<!-- ============ LINKS ============ -->
+<section id="links" class="section section-alt">
+  <div class="container narrow">
+    <h2 class="section-title">Links</h2>
+    <div class="grid links-grid">
+      <a href="https://x.com/tjkoury" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.53 3h3.02l-6.6 7.54L21.75 21h-5.9l-4.62-6.04L5.94 21H2.92l7.06-8.07L2.5 3h6.05l4.18 5.52L17.53 3Zm-1.06 16.2h1.67L7.6 4.71H5.81L16.47 19.2Z"/></svg></span><div><b>@tjkoury</b><small>On X / Twitter</small></div></a>
+      <a href="https://spacedatanetwork.org" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="4" ry="9"/></svg></span><div><b>spacedatanetwork.org</b><small>The Space Data Network</small></div></a>
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2.2Z"/></svg></span><div><b>Adversarial Security</b><small>Whitepaper on GitHub</small></div></a>
+      <a href="https://ansem.io/launch/coin/Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.6 3.9c3.2-1.4 6.5-1.1 6.5-1.1s.3 3.3-1.1 6.5c-1.1 2.5-3.5 5-5.6 6.7l-3.4-3.4c1.7-2.1 4.2-4.5 6.7-5.6"/><path d="M10 12.6 6.4 9m7.2 7.2-3.6-3.6"/><path d="M6.6 14.2c-1.2.5-2 1.6-2.3 3.1l-.6 3 3-.6c1.5-.3 2.6-1.1 3.1-2.3"/><circle cx="15.4" cy="8.6" r="1.5"/></svg></span><div><b>ansem.io launch</b><small>Original token launch</small></div></a>
+      <a href="https://dexscreener.com/solana/6scs7whhyjy3ujwl1laxbllvsotblcl4ko6vc65c3x8z" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20h17"/><path d="M4 16.2l4.6-5 3.4 2.9 6.4-7.4"/><path d="M14.6 6.4h4.2v4.1"/></svg></span><div><b>DexScreener</b><small>Live chart &amp; pool</small></div></a>
+      <a href="https://jup.ag/swap/SOL-Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F" target="_blank" rel="noopener" class="link-card">
+        <span class="link-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.2h11.4"/><path d="M12.6 5.2l3 3-3 3"/><path d="M20 15.8H8.6"/><path d="M11.4 12.8l-3 3 3 3"/></svg></span><div><b>Jupiter</b><small>Swap SOL → $SPACE</small></div></a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container">
+    <img src="images/space-token-logo.jpg" alt="$SPACE" class="footer-logo">
+    <p><b>$SPACE</b> — the personal token of tjkoury.sol.</p>
+    <p class="footer-sub">
+      Powering decentralized space situational awareness.
+      <a href="https://spacedatanetwork.org" target="_blank" rel="noopener">Space Data Network</a> ·
+      <a href="https://github.com/DigitalArsenal/Adversarial-Security" target="_blank" rel="noopener">Adversarial Security</a>
+    </p>
+    <p class="footer-mini">
+      Market data via DexScreener. Not financial advice. © <span id="year"></span> spaceonsol.org
+    </p>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
