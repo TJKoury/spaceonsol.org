@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trust Graph — $SPACE</title>
-<meta name="description" content="A live trust graph built from real on-chain $SPACE transfers, with a composable trust-rule engine.">
+<title>Your Trust Graph — $SPACE</title>
+<meta name="description" content="Your own web of trust on Solana: explicit PGP-style trust levels, signed EPM identity, vCard and QR export, and signed messages.">
 <link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
 <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -19,95 +19,196 @@
     <a href="https://www.sns.id/domain/tjkoury" target="_blank" rel="noopener" class="sol-chip" title="tjkoury.sol on SNS">tjkoury.sol</a>
   </div>
   <div class="nav-links">
-    <a href="#graph-sec">Graph</a>
-    <a href="#act">Trust</a>
+    <a href="index.html" class="nav-home">← Home</a>
+    <a href="#graph-sec">My graph</a>
+    <a href="#identity">Identity</a>
+    <a href="#message">Sign</a>
     <a href="#rules">Rules</a>
     <a href="#vault">Backup</a>
-    <button id="connectBtn" class="cta connect-cta">Connect wallet</button>
+    <button id="connectBtn" class="wbtn"><span class="wdot"></span><span id="wlabel">Connect wallet</span></button>
   </div>
   <button id="menu-btn" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
 </nav>
 
-<!-- ========== 1 · GRAPH ========== -->
+<!-- ========== 1 · MY TRUST GRAPH ========== -->
 <section id="graph-sec" class="tsec tsec-first">
   <div class="wrap">
-    <h1 class="t-h1">The $SPACE Trust Graph</h1>
-    <p class="t-lead">Real transfers, read live from Solana. Value moving to a key is the signal that the key is worth trusting.</p>
+    <h1 class="t-h1">Your web of trust</h1>
+    <p class="t-lead">
+      This graph is <b>yours</b> — rooted at your wallet, showing the keys you have vouched for and at what
+      level. Connect a wallet to build it.
+    </p>
 
     <div class="t-stats">
-      <div><b id="n-wallets">—</b><span>wallets</span></div>
-      <div><b id="n-edges">—</b><span>transfers</span></div>
-      <div><b id="n-volume">—</b><span>$SPACE moved</span></div>
+      <div><b id="n-out">—</b><span>you trust</span></div>
+      <div><b id="n-in">—</b><span>trust you</span></div>
+      <div class="st-hi"><b id="n-bonded">—</b><span>value you've bonded</span></div>
+      <div class="st-hi"><b id="n-mybond">—</b><span>bond at your key</span></div>
+      <div><b id="n-depth">—</b><span>reachable</span></div>
+      <div><b id="n-revoked">—</b><span>revoked</span></div>
       <div><b id="n-price">—</b><span>price</span></div>
       <div><b id="n-mcap">—</b><span>market cap</span></div>
-      <div><b id="n-supply">—</b><span>supply</span></div>
     </div>
 
     <div class="graph-card">
       <canvas id="graph"></canvas>
-      <div class="graph-empty" id="graphEmpty"><div class="spinner"></div><span>Reading transfers…</span></div>
-      <div class="graph-legend">
-        <span><i style="background:#46e0c8"></i>you</span>
-        <span><i style="background:#6ea8ff"></i>wallet</span>
-        <span><i style="background:#c98bff"></i>pool</span>
-        <span><i class="ln"></i>flow</span>
-        <span><i class="ln rev"></i>revoked</span>
+      <div class="graph-empty" id="graphEmpty">
+        <div class="ge-ico">🔑</div>
+        <span>Connect your wallet to see the keys you trust.</span>
       </div>
+      <div class="graph-legend" id="legend"></div>
       <div class="graph-tools">
-        <button id="moreBtn" class="mini">Load more</button>
-        <button id="reloadBtn" class="mini">Reload</button>
-        <button id="myHistoryBtn" class="mini" disabled>My transfers</button>
+        <button id="importChainBtn" class="mini" disabled>Import my $SPACE transfers</button>
+        <button id="fitBtn" class="mini">Re-center</button>
       </div>
     </div>
-    <p class="t-note" id="syncInfo">Loading…</p>
+    <p class="t-note" id="syncInfo">Not connected.</p>
+    <div id="cycleWarn" class="cycle-warn" hidden></div>
     <details class="t-adv">
       <summary>Use a custom RPC endpoint</summary>
-      <input id="rpc" placeholder="https://solana-rpc.publicnode.com (default) — a Helius/QuickNode key loads far more history">
+      <input id="rpc" placeholder="https://solana-rpc.publicnode.com (default)">
     </details>
   </div>
 </section>
 
-<!-- ========== 2 · ACT ========== -->
+<!-- ========== 2 · ASSIGN TRUST ========== -->
 <section id="act" class="tsec alt">
   <div class="wrap narrow">
-    <h2 class="t-h2">Vouch, or take it back</h2>
-    <p class="t-lead">Sending $SPACE is a trust assertion. Revoking withdraws it.</p>
+    <h2 class="t-h2">Assign a trust level</h2>
+    <p class="t-lead">
+      Trust is explicit, not implied by a transfer. These are the
+      <a href="https://www.gnupg.org/gph/en/manual/x334.html" target="_blank" rel="noopener">OpenPGP ownertrust</a>
+      levels, carried in the SDS <code>peerRegistryTrustCategory</code> enum and stored as the TRE
+      <code>WEIGHT</code>.
+    </p>
 
     <div class="tabs">
-      <button class="tab on" data-tab="give">Give trust</button>
-      <button class="tab" data-tab="revoke">Revoke trust</button>
+      <button class="tab on" data-tab="give">Assign trust</button>
+      <button class="tab" data-tab="revoke">Revoke</button>
     </div>
 
     <div class="tabpane on" id="pane-give">
+      <label>Key / wallet you are certifying<input id="toAddr" placeholder="Solana address or name.sol"></label>
+      <label>Trust level<select id="trustLevel"></select></label>
+      <div id="levelHelp" class="level-help"></div>
       <div class="row2">
-        <label>Wallet you trust<input id="toAddr" placeholder="Solana address"></label>
-        <label>Amount<input id="amount" type="number" min="0" step="any" placeholder="1000"></label>
+        <label>Also send $SPACE <span class="hint">optional — bonds the edge</span>
+          <input id="amount" type="number" min="0" step="any" placeholder="0"></label>
+        <label>Note <span class="hint">local only</span><input id="note" placeholder="Why"></label>
       </div>
-      <label>Note <span class="hint">stored locally, never broadcast</span><input id="note" placeholder="Why you trust them"></label>
-      <button id="sendBtn" class="btn btn-primary" disabled>Send $SPACE</button>
-      <p class="t-note">Signs a real SPL transfer in your wallet and writes a <b>TRE</b> record locally.</p>
+      <button id="assignBtn" class="btn btn-primary" disabled>Sign trust edge</button>
+      <p class="t-note">
+        Writes a <b>TRE</b> (Trust Edge Record) signed by your key. With an amount set, it also sends a real
+        SPL transfer to bond the edge.
+      </p>
     </div>
 
     <div class="tabpane" id="pane-revoke">
-      <label>Wallet to revoke<input id="revokeAddr" placeholder="Solana address"></label>
+      <label>Key to revoke<input id="revokeAddr" placeholder="Solana address or name.sol"></label>
       <div class="row2">
         <label>Reason<select id="revokeReason"></select></label>
         <label>Note<input id="revokeNote" placeholder="Optional"></label>
       </div>
       <button id="revokeBtn" class="btn btn-danger">Revoke trust</button>
-      <p class="t-note">Writes a <b>TNR</b> record, marks the matching TRE revoked, and dashes the edge in the graph.</p>
+      <p class="t-note">
+        Emits a <b>TRE tombstone</b> (<code>DELETED=true</code>, <code>WEIGHT=0</code>) — the schema's own
+        revocation mechanism. The edge drops out of the live projection.
+      </p>
     </div>
   </div>
 </section>
 
-<!-- ========== 3 · RULES ========== -->
+<!-- ========== 3 · IDENTITY (EPM) ========== -->
+<section id="identity" class="tsec">
+  <div class="wrap">
+    <h2 class="t-h2">Your signed identity</h2>
+    <p class="t-lead">
+      An <b>EPM</b> (Entity Profile Message) is your portable, tamper-evident identity record, signed over the
+      <a href="https://github.com/DigitalArsenal/spacedatastandards.org/blob/main/schema/EPM/CANONICAL_SERIALIZATION.md" target="_blank" rel="noopener">canonical RFC&nbsp;8785 projection</a>
+      — so any edit invalidates the signature.
+    </p>
+
+    <div class="id-grid">
+      <div class="card">
+        <h3>Profile</h3>
+        <div class="row2">
+          <label>Given name<input id="epmGiven" placeholder="Ada"></label>
+          <label>Family name<input id="epmFamily" placeholder="Lovelace"></label>
+        </div>
+        <label>Legal / organization name<input id="epmLegal" placeholder="Example Space Ltd"></label>
+        <div class="row2">
+          <label>Job title<input id="epmTitle" placeholder="Flight Dynamics Lead"></label>
+          <label>Entity type<select id="epmEntity"><option>User</option><option>Node</option></select></label>
+        </div>
+        <div class="row2">
+          <label>Email<input id="epmEmail" placeholder="ada@example.org"></label>
+          <label>Telephone<input id="epmTel" placeholder="+1 555 0100"></label>
+        </div>
+        <label>Distinguished name <span class="hint">X.509 DN, optional</span><input id="epmDn" placeholder="CN=Ada Lovelace,O=Example,C=US"></label>
+        <button id="signEpmBtn" class="btn btn-primary" disabled>Sign my EPM</button>
+        <p class="t-note">Your wallet signs the canonical payload. Nothing is uploaded.</p>
+      </div>
+
+      <div class="card">
+        <h3>Signed record <span id="epmState" class="muted-count">unsigned</span></h3>
+        <div id="epmOut" class="epm-out"><p class="rec-empty">Sign your EPM to see it here.</p></div>
+        <div class="preset-row">
+          <button id="epmDownloadBtn" class="mini strong" disabled>Download .epm</button>
+          <button id="epmVcardBtn" class="mini" disabled>vCard</button>
+          <button id="epmQrBtn" class="mini" disabled>QR</button>
+          <button id="epmVerifyBtn" class="mini" disabled>Verify</button>
+        </div>
+        <div class="preset-row">
+          <button id="epmImportBtn" class="mini">Import .epm / .vcf</button>
+          <input type="file" id="epmImportFile" accept=".epm,.bin,.vcf,.vcard" hidden>
+        </div>
+        <div id="qrBox" class="qr-box" hidden>
+          <canvas id="qrCanvas"></canvas>
+          <p class="t-note" id="qrNote"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4 · SIGNED MESSAGE ========== -->
+<section id="message" class="tsec alt">
+  <div class="wrap narrow">
+    <h2 class="t-h2">Sign a message for X</h2>
+    <p class="t-lead">
+      Prove a post really came from your key. Sign the text, then post it with the signature block attached —
+      anyone can verify it here.
+    </p>
+
+    <label>Message<textarea id="msgText" rows="3" placeholder="What do you want to say?"></textarea></label>
+    <div class="msg-meta"><span id="msgCount">0</span> characters</div>
+    <button id="msgSignBtn" class="btn btn-primary" disabled>Sign message</button>
+
+    <div id="msgOut" class="msg-out" hidden>
+      <label>Signed post <span class="hint">review before posting</span><textarea id="msgSigned" rows="7" readonly></textarea></label>
+      <div class="preset-row">
+        <button id="msgCopyBtn" class="mini strong">Copy</button>
+        <a id="msgTweetBtn" class="mini" target="_blank" rel="noopener">Open X composer</a>
+      </div>
+      <p class="t-note">Opens X with the text prefilled. You review and post it yourself — nothing is posted automatically.</p>
+    </div>
+
+    <details class="t-adv">
+      <summary>Verify someone else's signed post</summary>
+      <label>Paste the full post<textarea id="verText" rows="5" placeholder="Paste a post containing an sdn-sig block"></textarea></label>
+      <button id="verifyMsgBtn" class="mini strong">Verify signature</button>
+      <div id="verOut" class="backup-out"></div>
+    </details>
+  </div>
+</section>
+
+<!-- ========== 5 · RULES ========== -->
 <section id="rules" class="tsec">
   <div class="wrap">
     <h2 class="t-h2">Trust rule engine</h2>
     <p class="t-lead">
-      Rules compose. Each one tests a signal from the Adversarial Security model; a rule can
-      <b>depend on</b> another, so it only applies once its prerequisite passes. Together they form a policy
-      that scores any key.
+      Rules compose: each tests a signal from the Adversarial Security model, and a rule can
+      <b>depend on</b> another so it only applies once its prerequisite passes.
     </p>
 
     <div class="rules-grid">
@@ -126,12 +227,12 @@
           <label>Only if<select id="ruleDep"><option value="">— always apply —</option></select></label>
         </div>
         <button id="addRuleBtn" class="btn btn-primary">Add rule</button>
-        <p class="t-note">Saved as a <b>TRP</b> policy record. <span class="tag-proposed">proposed schema</span></p>
+        <p class="t-note">Stored as <b>TRP</b>. <span class="tag-proposed">proposed schema</span></p>
       </div>
 
       <div class="card">
         <h3>Policy <span id="ruleCount" class="muted-count">0 rules</span></h3>
-        <div id="rulesList" class="rules-list"><p class="rec-empty">No rules yet — add one, or load a preset.</p></div>
+        <div id="rulesList" class="rules-list"><p class="rec-empty">No rules yet.</p></div>
         <div class="preset-row">
           <button id="presetBtn" class="mini">Load whitepaper preset</button>
           <button id="clearRulesBtn" class="mini">Clear</button>
@@ -140,7 +241,7 @@
 
       <div class="card">
         <h3>Evaluate a key</h3>
-        <label>Wallet<input id="evalAddr" placeholder="Solana address"></label>
+        <label>Wallet<input id="evalAddr" placeholder="Solana address or name.sol"></label>
         <button id="evalBtn" class="btn btn-primary">Evaluate</button>
         <div id="evalOut" class="eval-out"><p class="rec-empty">Run an evaluation to see the score.</p></div>
       </div>
@@ -148,13 +249,11 @@
   </div>
 </section>
 
-<!-- ========== 4 · VAULT ========== -->
+<!-- ========== 6 · VAULT ========== -->
 <section id="vault" class="tsec alt">
   <div class="wrap narrow">
     <h2 class="t-h2">Your records</h2>
-    <p class="t-lead">
-      Everything above is stored <b>locally in your browser</b> by default — nothing leaves this page until you back it up.
-    </p>
+    <p class="t-lead">Stored <b>locally in your browser</b> by default. Nothing leaves this page until you back it up.</p>
 
     <div class="vault-bar">
       <div class="vault-count"><b id="recCount">0</b> records</div>
@@ -173,19 +272,16 @@
       <summary>Backup settings</summary>
       <div class="bset">
         <label>IPFS API endpoint <span class="hint">a local Kubo node works</span><input id="ipfsApi" placeholder="http://127.0.0.1:5001"></label>
-        <label>IPFS pinning token <span class="hint">optional — Pinata JWT, kept in memory only</span><input id="ipfsToken" type="password" placeholder="Scoped JWT"></label>
-        <label>S3 presigned PUT URL <span class="hint">keeps your AWS keys off this page — <code>aws s3 presign --method PUT s3://bucket/key.json</code></span><input id="s3Url" placeholder="https://bucket.s3.amazonaws.com/…"></label>
-        <label>Google OAuth client ID <span class="hint">token stays in this tab</span><input id="gdClient" placeholder="xxxxx.apps.googleusercontent.com"></label>
+        <label>IPFS pinning token <span class="hint">optional — Pinata JWT, memory only</span><input id="ipfsToken" type="password" placeholder="Scoped JWT"></label>
+        <label>S3 presigned PUT URL <span class="hint">keeps AWS keys off this page — <code>aws s3 presign --method PUT s3://bucket/key.json</code></span><input id="s3Url" placeholder="https://bucket.s3.amazonaws.com/…"></label>
+        <label>Google OAuth client ID<input id="gdClient" placeholder="xxxxx.apps.googleusercontent.com"></label>
       </div>
     </details>
 
     <details class="t-adv">
       <summary>Browse records</summary>
       <div id="recordsList" class="records-list"><p class="rec-empty">No records yet.</p></div>
-      <div class="preset-row">
-        <button id="captureBtn" class="mini">Capture graph transfers as TRE</button>
-        <button id="wipeBtn" class="mini">Clear local</button>
-      </div>
+      <button id="wipeBtn" class="mini">Clear local</button>
     </details>
   </div>
 </section>

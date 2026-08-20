@@ -231,7 +231,10 @@ export function encodeEPM(record) {
   const E = EPMMod.EPM, CK = EPMMod.CryptoKey, AD = EPMMod.Address, CP = EPMMod.ChainProof;
   const s = (v) => (v && String(v).trim() ? B.createString(String(v).trim()) : null);
 
-  const keyOffsets = (record.KEYS || []).map((k) => {
+  const sortedKeys = [...(record.KEYS || [])].sort((x, y) => cmpTuple(
+    [String(x.KEY_TYPE ?? "Signing"), x.ADDRESS_TYPE || "", x.PUBLIC_KEY || "", x.XPUB || ""],
+    [String(y.KEY_TYPE ?? "Signing"), y.ADDRESS_TYPE || "", y.PUBLIC_KEY || "", y.XPUB || ""]));
+  const keyOffsets = sortedKeys.map((k) => {
     const pk = s(k.PUBLIC_KEY), xp = s(k.XPUB), ka = s(k.KEY_ADDRESS), at = s(k.ADDRESS_TYPE);
     const kp = s(k.KEY_PATH), al = s(k.ALGORITHM), en = s(k.ENCODING);
     CK.startCryptoKey(B);
@@ -247,7 +250,10 @@ export function encodeEPM(record) {
   });
   const keysVec = keyOffsets.length ? E.createKeysVector(B, keyOffsets) : null;
 
-  const proofOffsets = (record.CHAIN_PROOFS || []).map((p) => {
+  const sortedProofs = [...(record.CHAIN_PROOFS || [])].sort((x, y) => cmpTuple(
+    [x.CHAIN || "", x.ADDRESS || "", x.KEY_PATH || ""],
+    [y.CHAIN || "", y.ADDRESS || "", y.KEY_PATH || ""]));
+  const proofOffsets = sortedProofs.map((p) => {
     const ch = s(p.CHAIN), ad = s(p.ADDRESS), pk = s(p.PUBLIC_KEY), kp = s(p.KEY_PATH);
     const sg = s(p.SIGNATURE), sp = s(p.SIGNED_PAYLOAD), al = s(p.ALGORITHM), en = s(p.ENCODING);
     CP.startChainProof(B);
@@ -263,10 +269,15 @@ export function encodeEPM(record) {
   });
   const proofsVec = proofOffsets.length ? E.createChainProofsVector(B, proofOffsets) : null;
 
-  const altVec = (record.ALTERNATE_NAMES || []).length
-    ? E.createAlternateNamesVector(B, record.ALTERNATE_NAMES.map((v) => B.createString(v))) : null;
-  const multiVec = (record.MULTIFORMAT_ADDRESS || []).length
-    ? E.createMultiformatAddressVector(B, record.MULTIFORMAT_ADDRESS.map((v) => B.createString(v))) : null;
+  // §3: producers MUST emit vectors in canonical order so an independent
+  // reconstruction is byte-identical. Reuse the same normalization the
+  // preimage uses (trim, drop empties, dedupe, sort).
+  const canonAlt = strVector(record.ALTERNATE_NAMES) || [];
+  const canonMulti = strVector(record.MULTIFORMAT_ADDRESS) || [];
+  const altVec = canonAlt.length
+    ? E.createAlternateNamesVector(B, canonAlt.map((v) => B.createString(v))) : null;
+  const multiVec = canonMulti.length
+    ? E.createMultiformatAddressVector(B, canonMulti.map((v) => B.createString(v))) : null;
 
   let addrOff = null;
   if (record.ADDRESS && Object.values(record.ADDRESS).some((v) => v && String(v).trim())) {
@@ -309,40 +320,42 @@ export function encodeEPM(record) {
   return B.asUint8Array();
 }
 
-/** Decode size-prefixed "$EPM" bytes back to a plain object. */
+/** Decode size-prefixed "$EPM" bytes back to a plain object.
+ *  Note: generated getters are UPPER_SNAKE on the instance, while the static
+ *  builder methods are camelCase (addDn). */
 export function decodeEPM(bytes) {
   const buf = new flatbuffers.ByteBuffer(bytes);
   const e = EPMMod.EPM.getSizePrefixedRootAsEPM(buf);
   const out = {
-    DN: e.dn(), LEGAL_NAME: e.legalName(), FAMILY_NAME: e.familyName(), GIVEN_NAME: e.givenName(),
-    ADDITIONAL_NAME: e.additionalName(), HONORIFIC_PREFIX: e.honorificPrefix(),
-    HONORIFIC_SUFFIX: e.honorificSuffix(), JOB_TITLE: e.jobTitle(), OCCUPATION: e.occupation(),
-    EMAIL: e.email(), TELEPHONE: e.telephone(), SIGNATURE: e.signature(),
-    SIGNATURE_TIMESTAMP: Number(e.signatureTimestamp?.() ?? 0),
-    ENTITY_TYPE: e.entityType() === EntityType.Node ? "Node" : "User",
-    SIGNATURE_ALGORITHM: e.signatureAlgorithm?.() || undefined,
+    DN: e.DN(), LEGAL_NAME: e.LEGAL_NAME(), FAMILY_NAME: e.FAMILY_NAME(), GIVEN_NAME: e.GIVEN_NAME(),
+    ADDITIONAL_NAME: e.ADDITIONAL_NAME(), HONORIFIC_PREFIX: e.HONORIFIC_PREFIX(),
+    HONORIFIC_SUFFIX: e.HONORIFIC_SUFFIX(), JOB_TITLE: e.JOB_TITLE(), OCCUPATION: e.OCCUPATION(),
+    EMAIL: e.EMAIL(), TELEPHONE: e.TELEPHONE(), SIGNATURE: e.SIGNATURE(),
+    SIGNATURE_TIMESTAMP: Number(e.SIGNATURE_TIMESTAMP?.() ?? 0),
+    ENTITY_TYPE: e.ENTITY_TYPE() === EntityType.Node ? "Node" : "User",
+    SIGNATURE_ALGORITHM: e.SIGNATURE_ALGORITHM?.() || undefined,
     ALTERNATE_NAMES: [], MULTIFORMAT_ADDRESS: [], KEYS: [], CHAIN_PROOFS: [],
   };
-  const a = e.address?.();
+  const a = e.ADDRESS?.();
   if (a) out.ADDRESS = {
-    COUNTRY: a.country(), REGION: a.region(), LOCALITY: a.locality(),
-    POSTAL_CODE: a.postalCode(), STREET: a.street(), POST_OFFICE_BOX_NUMBER: a.postOfficeBoxNumber(),
+    COUNTRY: a.COUNTRY(), REGION: a.REGION(), LOCALITY: a.LOCALITY(),
+    POSTAL_CODE: a.POSTAL_CODE(), STREET: a.STREET(), POST_OFFICE_BOX_NUMBER: a.POST_OFFICE_BOX_NUMBER(),
   };
-  for (let i = 0; i < e.alternateNamesLength(); i++) out.ALTERNATE_NAMES.push(e.alternateNames(i));
-  for (let i = 0; i < e.multiformatAddressLength(); i++) out.MULTIFORMAT_ADDRESS.push(e.multiformatAddress(i));
+  for (let i = 0; i < e.alternateNamesLength(); i++) out.ALTERNATE_NAMES.push(e.ALTERNATE_NAMES(i));
+  for (let i = 0; i < e.multiformatAddressLength(); i++) out.MULTIFORMAT_ADDRESS.push(e.MULTIFORMAT_ADDRESS(i));
   for (let i = 0; i < e.keysLength(); i++) {
-    const k = e.keys(i);
+    const k = e.KEYS(i);
     out.KEYS.push({
-      PUBLIC_KEY: k.publicKey(), XPUB: k.xpub(), KEY_ADDRESS: k.keyAddress(),
-      ADDRESS_TYPE: k.addressType(), KEY_PATH: k.keyPath?.(), ALGORITHM: k.algorithm?.(),
-      ENCODING: k.encoding?.(), KEY_TYPE: k.keyType() === KeyType.Encryption ? "Encryption" : "Signing",
+      PUBLIC_KEY: k.PUBLIC_KEY(), XPUB: k.XPUB(), KEY_ADDRESS: k.KEY_ADDRESS(),
+      ADDRESS_TYPE: k.ADDRESS_TYPE(), KEY_PATH: k.KEY_PATH?.(), ALGORITHM: k.ALGORITHM?.(),
+      ENCODING: k.ENCODING?.(), KEY_TYPE: k.KEY_TYPE() === KeyType.Encryption ? "Encryption" : "Signing",
     });
   }
   for (let i = 0; i < e.chainProofsLength(); i++) {
-    const p = e.chainProofs(i);
+    const p = e.CHAIN_PROOFS(i);
     out.CHAIN_PROOFS.push({
-      CHAIN: p.chain(), ADDRESS: p.address(), PUBLIC_KEY: p.publicKey(), KEY_PATH: p.keyPath(),
-      SIGNATURE: p.signature(), SIGNED_PAYLOAD: p.signedPayload(), ALGORITHM: p.algorithm(), ENCODING: p.encoding(),
+      CHAIN: p.CHAIN(), ADDRESS: p.ADDRESS(), PUBLIC_KEY: p.PUBLIC_KEY(), KEY_PATH: p.KEY_PATH(),
+      SIGNATURE: p.SIGNATURE(), SIGNED_PAYLOAD: p.SIGNED_PAYLOAD(), ALGORITHM: p.ALGORITHM(), ENCODING: p.ENCODING(),
     });
   }
   for (const k of Object.keys(out)) if (out[k] === null) delete out[k];
