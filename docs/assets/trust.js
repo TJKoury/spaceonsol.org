@@ -17,7 +17,19 @@ const DEFAULT_RPC = "https://solana-rpc.publicnode.com";
 const $ = (id) => document.getElementById(id);
 const short = (a) => (a ? a.slice(0, 4) + "…" + a.slice(-4) : "—");
 const usd = (n) => n == null ? "—" : n >= 1e6 ? "$" + (n/1e6).toFixed(2) + "M"
-  : n >= 1e3 ? "$" + (n/1e3).toFixed(1) + "K" : n >= 1 ? "$" + n.toFixed(2) : "$" + n.toFixed(4);
+  : n >= 1e3 ? "$" + (n/1e3).toFixed(1) + "K" : n >= 1 ? "$" + n.toFixed(2) : fmtPrice(n);
+
+/** Sub-penny values use the crypto subscript convention: $0.0(3)102 means
+ *  three zeros after the point, i.e. 0.000102. */
+function fmtPrice(n) {
+  if (n == null || !isFinite(n) || n === 0) return "—";
+  if (n >= 1) return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (n >= 0.01) return "$" + n.toFixed(4);
+  const exp = Math.floor(Math.log10(n));
+  const zeros = Math.abs(exp) - 1;
+  const digits = Math.round(n * Math.pow(10, Math.abs(exp) + 2));
+  return `$0.0<sub>${zeros}</sub>${digits}`;
+}
 const fmtC = (n) => n == null ? "—" : n >= 1e9 ? (n/1e9).toFixed(2)+"B" : n >= 1e6 ? (n/1e6).toFixed(2)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"K" : String(Math.round(n));
 
 let provider = null, wallet = null, walletPubBytes = null, connection = null;
@@ -810,7 +822,7 @@ async function refreshMyBond() {
     if (p) {
       spacePriceUsd = parseFloat(p.priceUsd) || 0;
       const mc = parseFloat(p.marketCap || p.fdv);
-      $("n-price").textContent = spacePriceUsd >= 0.01 ? "$" + spacePriceUsd.toFixed(4) : "$" + spacePriceUsd.toPrecision(3);
+      $("n-price").innerHTML = fmtPrice(spacePriceUsd);
       $("n-mcap").textContent = mc >= 1e6 ? "$" + (mc/1e6).toFixed(2) + "M" : "$" + (mc/1e3).toFixed(1) + "K";
     }
     solPriceUsd = await priceOf("So11111111111111111111111111111111111111112");
