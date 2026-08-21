@@ -35,9 +35,14 @@
   <div class="wrap">
     <h1 class="t-h1">Your web of trust</h1>
     <p class="t-lead">
-      This graph is <b>yours</b> — rooted at your wallet, showing the keys you have vouched for and at what
-      level. The trust layer underneath is open and token-agnostic; <b>$SPACE</b> is simply the first token
-      running on it.
+      Sending $SPACE creates a <b>link</b> to a key — that transfer, and the balance sitting at that key,
+      are on-chain and visible to anyone. What the link <b>means</b> is not: your levels, your rules and your
+      revocations are a private mapping held in this browser.
+    </p>
+    <p class="t-lead">
+      That split is the point. The public part answers one question continuously —
+      <b>have the funds at that key been drained?</b> A key that still holds what you sent it has not been
+      compromised. Your private config decides how much that is worth to you.
     </p>
 
     <div class="t-stats">
@@ -47,8 +52,6 @@
       <div class="st-hi"><b id="n-mybond">—</b><span>bond at your key</span></div>
       <div><b id="n-depth">—</b><span>reachable</span></div>
       <div><b id="n-revoked">—</b><span>revoked</span></div>
-      <div><b id="n-price">—</b><span>price</span></div>
-      <div><b id="n-mcap">—</b><span>market cap</span></div>
     </div>
 
     <div class="graph-card">
@@ -77,9 +80,10 @@
   <div class="wrap narrow">
     <h2 class="t-h2">Assign a trust level</h2>
     <p class="t-lead">
-      Trust is explicit, not implied by a transfer. These are the standard
+      The transfer is what creates the link, and it is the only part that goes on-chain. The level you pick
+      is <b>yours alone</b> — stored locally, using the standard
       <a href="https://www.gnupg.org/gph/en/manual/x334.html" target="_blank" rel="noopener">OpenPGP ownertrust</a>
-      levels — the same vocabulary keyservers have used for thirty years.
+      vocabulary.
     </p>
 
     <div class="tabs">
@@ -92,13 +96,14 @@
       <label>Trust level<select id="trustLevel"></select></label>
       <div id="levelHelp" class="level-help"></div>
       <div class="row2">
-        <label>Also send $SPACE <span class="hint">optional — bonds the edge</span>
-          <input id="amount" type="number" min="0" step="any" placeholder="0"></label>
+        <label>$SPACE to send <span class="hint">required — this is the bond</span>
+          <input id="amount" type="number" min="0" step="any" placeholder="1000" required></label>
         <label>Note <span class="hint">local only</span><input id="note" placeholder="Why"></label>
       </div>
-      <button id="assignBtn" class="btn btn-primary" disabled>Sign trust edge</button>
+      <button id="assignBtn" class="btn btn-primary" disabled>Send $SPACE &amp; establish trust</button>
       <p class="t-note">
-        Your key signs the certification. With an amount set, it also sends real $SPACE to bond the edge.
+        The transfer settles on Solana — that part is public and permanent. The level, the note and the rules
+        stay in this browser. No transfer, no link.
       </p>
     </div>
 
@@ -110,8 +115,9 @@
       </div>
       <button id="revokeBtn" class="btn btn-danger">Revoke trust</button>
       <p class="t-note">
-        Withdraws your certification and drops the edge from your web of trust. The revocation is permanent
-        and publicly checkable.
+        Removes the key from <b>your</b> trust config. This is a local decision — it does not move tokens and
+        does not appear on-chain. A key you have already funded stays funded; you are recording that you no
+        longer trust it.
       </p>
     </div>
   </div>

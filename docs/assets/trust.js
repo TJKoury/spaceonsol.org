@@ -162,29 +162,30 @@ $("assignBtn").addEventListener("click", async () => {
   }
 
   const level = $("trustLevel").value;
-  const amt = parseFloat($("amount").value) || 0;
-  let txSig = null;
+  const amt = parseFloat($("amount").value);
 
-  if (amt > 0) {
-    try {
-      const c = conn();
-      const toPub = new PublicKey(to);
-      const fromAta = await getAssociatedTokenAddress(MINT, provider.publicKey);
-      const toAta = await getAssociatedTokenAddress(MINT, toPub);
-      const bal = await c.getTokenAccountBalance(fromAta).catch(() => null);
-      if (!bal?.value) return toast("This wallet holds no $SPACE", true);
-      if (Number(bal.value.uiAmount) < amt) return toast(`Only ${bal.value.uiAmount} $SPACE available`, true);
-      const tx = new Transaction();
-      if (!(await c.getAccountInfo(toAta)))
-        tx.add(createAssociatedTokenAccountInstruction(provider.publicKey, toAta, toPub, MINT));
-      tx.add(createTransferInstruction(fromAta, toAta, provider.publicKey,
-        BigInt(Math.round(amt * 10 ** DECIMALS)), [], TOKEN_PROGRAM_ID));
-      tx.feePayer = provider.publicKey;
-      tx.recentBlockhash = (await c.getLatestBlockhash()).blockhash;
-      const res = await provider.signAndSendTransaction(tx);
-      txSig = res?.signature || res;
-    } catch (e) { return toast("Transfer failed: " + (e.message || e), true); }
-  }
+  // The transfer IS the trust relationship. Without it there is no edge.
+  if (!(amt > 0)) return toast("Enter an amount — sending $SPACE is what establishes the trust", true);
+
+  let txSig = null;
+  try {
+    const c = conn();
+    const toPub = new PublicKey(to);
+    const fromAta = await getAssociatedTokenAddress(MINT, provider.publicKey);
+    const toAta = await getAssociatedTokenAddress(MINT, toPub);
+    const bal = await c.getTokenAccountBalance(fromAta).catch(() => null);
+    if (!bal?.value) return toast("This wallet holds no $SPACE", true);
+    if (Number(bal.value.uiAmount) < amt) return toast(`Only ${bal.value.uiAmount} $SPACE available`, true);
+    const tx = new Transaction();
+    if (!(await c.getAccountInfo(toAta)))
+      tx.add(createAssociatedTokenAccountInstruction(provider.publicKey, toAta, toPub, MINT));
+    tx.add(createTransferInstruction(fromAta, toAta, provider.publicKey,
+      BigInt(Math.round(amt * 10 ** DECIMALS)), [], TOKEN_PROGRAM_ID));
+    tx.feePayer = provider.publicKey;
+    tx.recentBlockhash = (await c.getLatestBlockhash()).blockhash;
+    const res = await provider.signAndSendTransaction(tx);
+    txSig = res?.signature || res;
+  } catch (e) { return toast("Transfer failed — no trust established: " + (e.message || e), true); }
 
   // sign the trust edge itself with the wallet key
   const tre = SDS.makeTRE({
@@ -202,7 +203,7 @@ $("assignBtn").addEventListener("click", async () => {
   SDS.addRecord(tre);
   $("toAddr").value = $("amount").value = $("note").value = "";
   redraw(); renderRecords();
-  toast(`${level} trust assigned to ${short(to)}${txSig ? ` + ${amt} $SPACE` : ""}`);
+  toast(`Sent ${amt} $SPACE — ${level} trust established with ${short(to)}`);
 });
 
 /* ---------- revoke (TRE tombstone) ---------- */
@@ -254,6 +255,7 @@ $("importChainBtn").addEventListener("click", async () => {
       if (!cp || cp[0] === POOL) continue;      // swaps against the pool aren't trust
       if (SDS.projectEdges().some((e) => e.EDGE_ID === `${wallet}->${cp[0]}`)) continue;
       if (SDS.wouldCreateCycle(wallet, cp[0])) continue;
+      if (!(Math.abs(mine) > 0)) continue;   // an edge requires a real transfer
       SDS.addRecord(SDS.makeTRE({
         trusterId: wallet, trusteeId: cp[0], level: "Standard",
         amount: Math.abs(mine), signature: s.signature, note: "imported from chain",
@@ -819,12 +821,7 @@ async function refreshMyBond() {
   try {
     const j = await (await fetch("https://api.dexscreener.com/latest/dex/tokens/" + MINT_STR)).json();
     const p = j.pairs?.[0];
-    if (p) {
-      spacePriceUsd = parseFloat(p.priceUsd) || 0;
-      const mc = parseFloat(p.marketCap || p.fdv);
-      $("n-price").innerHTML = fmtPrice(spacePriceUsd);
-      $("n-mcap").textContent = mc >= 1e6 ? "$" + (mc/1e6).toFixed(2) + "M" : "$" + (mc/1e3).toFixed(1) + "K";
-    }
+    if (p) spacePriceUsd = parseFloat(p.priceUsd) || 0;   // used to value bonds in USD
     solPriceUsd = await priceOf("So11111111111111111111111111111111111111112");
     if (wallet) refreshMyBond(); else redraw();
   } catch {}

@@ -232,7 +232,9 @@ img{max-width:100%;display:block}
 .t-lead{color:var(--muted);text-align:center;max-width:600px;margin:0 auto 28px;font-size:.98rem}
 .t-note{color:var(--dim);font-size:.82rem;text-align:center;margin-top:12px}
 
-.t-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin-bottom:22px}
+/* 8 tiles: 4x2 on desktop, 2x4 on mobile — never an orphan row */
+.t-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+@media(max-width:760px){.t-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .t-stats>div{border-radius:13px;padding:18px 14px;text-align:center;min-height:92px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
   background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--sheen);
@@ -524,6 +526,17 @@ label input::placeholder,.t-adv input::placeholder{color:var(--dim)}
 .goal-row b{font-size:1rem;color:var(--txt)}
 .goal-row p{font-size:.9rem;color:var(--muted);line-height:1.65;margin-top:4px}
 .goal-close{text-align:center;font-size:.95rem;color:var(--muted);line-height:1.7;max-width:600px;margin:0 auto}
+
+
+/* ============ TRUST LEVEL HELP ============ */
+.level-help{display:flex;flex-wrap:wrap;align-items:center;gap:9px;border-radius:11px;padding:13px 15px;
+  margin:-4px 0 16px;font-size:.86rem;background:rgba(0,0,0,.24);border:1px solid var(--glass-line);
+  box-shadow:var(--sheen)}
+.lvl-dot{width:10px;height:10px;border-radius:50%;flex:none}
+.lvl-pgp{color:var(--accent2);font-size:.79rem}
+.level-help small{flex-basis:100%;color:var(--muted);font-size:.79rem;line-height:1.5}
+.level-help code{margin-left:auto;font-size:.73rem;color:var(--gold);background:rgba(255,194,92,.1);
+  border:1px solid rgba(255,194,92,.2)}
 
 /* ============ RESPONSIVE ============ */
 @media(max-width:720px){
