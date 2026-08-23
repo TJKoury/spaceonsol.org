@@ -837,9 +837,10 @@ html[data-theme="light"] .prob-close{color:#333c50}
 
 /* ============ APP SHELL (trust page fills the viewport) ============ */
 body.app{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
-body.app #nav{position:static;flex:none}
+body.app #nav{position:relative;flex:none}
 .app-main{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth}
-.app-title{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:800;
+.app-title{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:800;
   font-size:.95rem;letter-spacing:.12em;text-transform:uppercase;color:var(--txt);white-space:nowrap}
 .app-title::before{content:"[ ";color:var(--accent2)}
 .app-title::after{content:" ]";color:var(--accent2)}
@@ -861,7 +862,8 @@ body.app .tut-info-row{display:none}
   display:flex;flex-direction:column;justify-content:center;background:rgba(6,8,14,.97)}
 .graph-card .tut[hidden]{display:none}
 .graph-card .tut-track{flex:none}
-.graph-card .tut-slide{max-width:560px;margin:0 auto}
+.graph-card .tut-slide{max-width:none;justify-content:center}
+.graph-card .tut-slide>div{max-width:360px}
 
 /* empty state doubles as the connect action */
 .graph-empty{pointer-events:auto;cursor:pointer}
