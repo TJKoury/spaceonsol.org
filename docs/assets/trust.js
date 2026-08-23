@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=15";
-import * as EPM from "./epm.js?v=15";
-import { listWallets, connectTo } from "./wallet.js?v=15";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=15";
+import * as SDS from "./sds-store.js?v=16";
+import * as EPM from "./epm.js?v=16";
+import { listWallets, connectTo } from "./wallet.js?v=16";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=16";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -69,15 +69,6 @@ const levelColor = (s) => LEVEL_COLORS[s] || "#6ea8ff";
 SDS.TRUST_LEVELS.forEach((l) =>
   $("trustLevel").add(new Option(`${l.sds} — PGP “${l.pgp}” (weight ${l.weight})`, l.sds)));
 $("trustLevel").value = "Trusted";
-function showLevelHelp() {
-  const l = SDS.levelBySds($("trustLevel").value);
-  $("levelHelp").innerHTML =
-    `<span class="lvl-dot" style="background:${levelColor(l.sds)}"></span>` +
-    `<b>${l.sds}</b> <span class="lvl-pgp">≡ PGP ${l.pgp}</span><small>${l.desc}</small>` +
-    `<code>WEIGHT = ${l.weight}</code>`;
-}
-$("trustLevel").addEventListener("change", showLevelHelp);
-showLevelHelp();
 SDS.REVOCATION_REASONS.forEach(([v, l]) => $("revokeReason").add(new Option(l, v)));
 
 $("legend").innerHTML =
@@ -394,6 +385,7 @@ async function transferSpace(to, amt) {
 }
 
 const MAX_SEND = 100;
+let repeatConfirmFor = null;
 
 /** "@handle", "x.com/handle", "https://twitter.com/handle" → "handle" */
 function cleanXHandle(v) {
@@ -415,6 +407,7 @@ function updateSendTotal() {
     : `Total to send: <b>${amt}</b> $SPACE${spacePriceUsd ? ` · ≈ ${usd(amt * spacePriceUsd)}` : ""}`;
 }
 $("amount").addEventListener("input", updateSendTotal);
+$("toAddr").addEventListener("input", () => { repeatConfirmFor = null; $("repeatWarn").hidden = true; });
 
 $("assignBtn").addEventListener("click", async () => {
   let to;
@@ -435,6 +428,20 @@ $("assignBtn").addEventListener("click", async () => {
   // The transfer IS the trust relationship. Without it there is no edge.
   if (!(amt > 0)) return toast("Enter an amount — sending $SPACE is what establishes the trust", true);
   if (amt > MAX_SEND) return toast(`Maximum bond is ${MAX_SEND} $SPACE`, true);
+
+  // already linked? make the user confirm they mean to send MORE
+  const existing = SDS.projectEdges().find((e) => e.EDGE_ID === `${wallet}->${to}`);
+  if (existing && repeatConfirmFor !== to) {
+    repeatConfirmFor = to;
+    const w = $("repeatWarn");
+    w.hidden = false;
+    w.innerHTML = `You already have a <b>${existing._level}</b> link with ${short(to)}` +
+      (existing._amount ? ` (bonded <b>${fmtC(existing._amount)}</b> $SPACE)` : "") +
+      `. Press the button again to send <b>${amt}</b> more $SPACE.`;
+    return;
+  }
+  repeatConfirmFor = null;
+  $("repeatWarn").hidden = true;
 
   let txSig = null;
   try { txSig = await transferSpace(to, amt); }
@@ -910,16 +917,19 @@ function setView(mode) {   // "graph" | "list" | "stats" | "assign"
   $("listView").hidden = mode !== "list";
   $("statsView").hidden = mode !== "stats";
   $("assignView").hidden = mode !== "assign";
+  $("fileView").hidden = mode !== "file";
   $("viewGraphBtn").classList.toggle("on", mode === "graph");
   $("viewListBtn").classList.toggle("on", mode === "list");
   $("viewStatsBtn").classList.toggle("on", mode === "stats");
   $("viewAssignBtn").classList.toggle("on", mode === "assign");
+  $("viewFileBtn").classList.toggle("on", mode === "file");
   if (mode === "list") renderList();
 }
 $("viewGraphBtn").addEventListener("click", () => setView("graph"));
 $("viewListBtn").addEventListener("click", () => setView("list"));
 $("viewStatsBtn").addEventListener("click", () => setView("stats"));
 $("viewAssignBtn").addEventListener("click", () => setView("assign"));
+$("viewFileBtn").addEventListener("click", () => setView("file"));
 $("listSearch").addEventListener("input", () => renderList());
 document.querySelectorAll(".node-table th").forEach((th) =>
   th.addEventListener("click", () => {

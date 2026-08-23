@@ -9,7 +9,7 @@
 <script>(function(){var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;
 window.__toggleTheme=function(){var d=document.documentElement,n=d.dataset.theme==="light"?"dark":"light";
 d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
-<link rel="stylesheet" href="assets/style.css?v=15">
+<link rel="stylesheet" href="assets/style.css?v=16">
 </head>
 <body class="app">
 
@@ -40,7 +40,7 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
     <div class="graph-card">
       <button id="tutInfoBtn" class="tut-info corner-tl" title="How it works" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
       <button id="fitBtn" class="tut-info corner-tr" title="Reset view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg></button>
-      <div class="card-status"><span id="syncInfo">Not connected.</span></div>
+      <span id="syncInfo" hidden></span>
       <div class="tut" id="tut">
         <button id="tutCloseBtn" class="tut-x" aria-label="Close tutorial">✕</button>
         <div class="tut-track" id="tutTrack">
@@ -106,7 +106,8 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
           <button id="viewGraphBtn" class="on" data-i18n="viewGraph">graph</button>
           <button id="viewListBtn" data-i18n="viewList">list</button>
           <button id="viewStatsBtn" data-i18n="viewStats">stats</button>
-          <button id="viewAssignBtn" data-i18n="viewAssign">assign</button>
+          <button id="viewAssignBtn" data-i18n="viewAssign">establish</button>
+          <button id="viewFileBtn" data-i18n="viewFile">file</button>
         </div>
         <button id="hiddenBtn" class="mini" hidden><span data-i18n="archivedWord">archived</span> <b id="hiddenCount">0</b></button>
       </div>
@@ -127,17 +128,23 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
     </details>
        </div>
       </div>
+      <div id="fileView" class="file-view" hidden>
+        <div class="file-inner">
+          <button id="gExportBtn" title="Export your trust records"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span data-i18n="exportBtn">export</span></button>
+          <button id="gImportBtn" title="Import an SDS archive (.sds FlatBuffers or JSON)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span data-i18n="importBtn">import</span></button>
+          <input type="file" id="gImportFile" accept=".sds,.bin,.json,application/json,application/octet-stream" hidden>
+        </div>
+      </div>
       <div id="assignView" class="assign-view" hidden>
         <div class="assign-inner">
     <div class="tabs">
-      <button class="tab on" data-tab="give">Assign trust</button>
+      <button class="tab on" data-tab="give">Establish trust</button>
       <button class="tab" data-tab="revoke">Revoke</button>
     </div>
 
     <div class="tabpane on" id="pane-give">
       <label>Key / wallet you are certifying<input id="toAddr" placeholder="Solana address or name.sol"></label>
       <label>Trust level<select id="trustLevel"></select></label>
-      <div id="levelHelp" class="level-help"></div>
       <div class="row2">
         <label>$SPACE to send <span class="hint">required — this is the bond · max 100</span>
           <input id="amount" type="number" min="0" max="100" step="any" placeholder="100" required></label>
@@ -145,12 +152,9 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       </div>
       <label>X account <span class="hint">optional — links the key to a public handle</span>
         <input id="xAcct" placeholder="@handle"></label>
+      <div id="repeatWarn" class="send-total over" hidden></div>
       <div id="sendTotal" class="send-total" hidden></div>
       <button id="assignBtn" class="btn btn-primary" disabled>Send $SPACE &amp; establish trust</button>
-      <p class="t-note">
-        The transfer settles on Solana — that part is public and permanent. The level, the note and the rules
-        stay in this browser. No transfer, no link.
-      </p>
     </div>
 
     <div class="tabpane" id="pane-revoke">
@@ -160,11 +164,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
         <label>Note<input id="revokeNote" placeholder="Optional"></label>
       </div>
       <button id="revokeBtn" class="btn btn-danger">Revoke trust</button>
-      <p class="t-note">
-        Removes the key from <b>your</b> trust config. This is a local decision — it does not move tokens and
-        does not appear on-chain. A key you have already funded stays funded; you are recording that you no
-        longer trust it.
-      </p>
     </div>
         </div>
       </div>
@@ -187,11 +186,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
           </tr></thead>
           <tbody id="listRows"></tbody>
         </table></div>
-      </div>
-      <div class="graph-io">
-        <button id="gExportBtn" title="Export your trust records"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span data-i18n="exportBtn">export</span></button>
-        <button id="gImportBtn" title="Import an SDS archive (.sds FlatBuffers or JSON)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span data-i18n="importBtn">import</span></button>
-        <input type="file" id="gImportFile" accept=".sds,.bin,.json,application/json,application/octet-stream" hidden>
       </div>
     </div>
   </div>
@@ -458,6 +452,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=15"></script>
+<script type="module" src="assets/trust.js?v=16"></script>
 </body>
 </html>
