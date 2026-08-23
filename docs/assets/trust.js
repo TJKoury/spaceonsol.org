@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=10";
-import * as EPM from "./epm.js?v=10";
-import { listWallets, connectTo } from "./wallet.js?v=10";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=10";
+import * as SDS from "./sds-store.js?v=11";
+import * as EPM from "./epm.js?v=11";
+import { listWallets, connectTo } from "./wallet.js?v=11";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=11";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -657,7 +657,7 @@ function openNodePop(node) {
   }
   const typeBadge = NODE_TAGS.get(node.id) || TYPE_BADGE[ACCT_TYPE.get(node.id)];
   $("npType").hidden = !typeBadge || !!node.you;
-  $("npType").textContent = typeBadge ? "⚠ " + typeBadge.toUpperCase() : "";
+  $("npType").textContent = typeBadge ? typeBadge.toUpperCase() : "";
   $("npHide").hidden = !!node.you;   // you can't hide yourself
   const edge = wallet && !node.you
     ? SDS.projectEdgesWithTombstones().find((e) => e.EDGE_ID === `${wallet}->${node.id}`)
@@ -843,14 +843,17 @@ $("uploadIdFile").addEventListener("change", async (e) => {
 
 /* ---------- list view: searchable, sortable table over the same nodes ---------- */
 let listSort = { key: "bal", dir: -1 };
-function setView(list) {
-  $("listView").hidden = !list;
-  $("viewListBtn").classList.toggle("on", list);
-  $("viewGraphBtn").classList.toggle("on", !list);
-  if (list) renderList();
+function setView(mode) {   // "graph" | "list" | "stats"
+  $("listView").hidden = mode !== "list";
+  $("statsView").hidden = mode !== "stats";
+  $("viewGraphBtn").classList.toggle("on", mode === "graph");
+  $("viewListBtn").classList.toggle("on", mode === "list");
+  $("viewStatsBtn").classList.toggle("on", mode === "stats");
+  if (mode === "list") renderList();
 }
-$("viewGraphBtn").addEventListener("click", () => setView(false));
-$("viewListBtn").addEventListener("click", () => setView(true));
+$("viewGraphBtn").addEventListener("click", () => setView("graph"));
+$("viewListBtn").addEventListener("click", () => setView("list"));
+$("viewStatsBtn").addEventListener("click", () => setView("stats"));
 $("listSearch").addEventListener("input", () => renderList());
 document.querySelectorAll(".node-table th").forEach((th) =>
   th.addEventListener("click", () => {

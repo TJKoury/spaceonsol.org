@@ -9,7 +9,7 @@
 <script>(function(){var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;
 window.__toggleTheme=function(){var d=document.documentElement,n=d.dataset.theme==="light"?"dark":"light";
 d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
-<link rel="stylesheet" href="assets/style.css?v=10">
+<link rel="stylesheet" href="assets/style.css?v=11">
 </head>
 <body>
 
@@ -29,7 +29,7 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
     <a href="#rules" data-i18n="navRules">Rules</a>
     <a href="#vault" data-i18n="navBackup">Backup</a>
     <select id="langSel" class="lang-select" aria-label="Language"></select>
-    <button class="theme-toggle" onclick="__toggleTheme()" title="Light / dark theme" aria-label="Toggle theme">◐</button>
+    <button class="theme-toggle" onclick="__toggleTheme()" title="Light / dark theme" aria-label="Toggle theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
     <a href="#graph-sec" id="navArchived" class="nav-archived" hidden>archived (<span id="navArchivedCount">0</span>)</a>
     <button id="connectBtn" class="wbtn"><span class="wdot"></span><span id="wlabel" data-i18n="connect">Connect wallet</span></button>
   </div>
@@ -40,7 +40,7 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
 <section id="graph-sec" class="tsec tsec-first">
   <div class="wrap">
     <h1 class="t-h1">Trust Graph</h1>
-    <div class="tut-info-row"><button id="tutInfoBtn" class="tut-info" title="How it works" hidden>i</button></div>
+    <div class="tut-info-row"><button id="tutInfoBtn" class="tut-info" title="How it works" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button></div>
 
     <div class="tut" id="tut">
       <button id="tutCloseBtn" class="tut-x" aria-label="Close tutorial">✕</button>
@@ -96,6 +96,25 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       </div>
     </div>
 
+    <div class="graph-card">
+      <div class="console-bar"><span class="con-dot"></span>TRUST://GRAPH · LIVE</div>
+      <canvas id="graph"></canvas>
+      <div class="graph-empty" id="graphEmpty">
+        <div class="ge-ico"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></div>
+        <b class="ge-title" data-i18n="emptyT">Connect your wallet</b>
+        <span class="ge-body" data-i18n="emptyB">Your $SPACE transfers import automatically as trust links. Balances, .sol names and identities load live. Trust levels and notes never leave this browser.</span>
+      </div>
+      <div class="graph-legend" id="legend"></div>
+      <div class="graph-tools">
+        <div class="view-toggle">
+          <button id="viewGraphBtn" class="on" data-i18n="viewGraph">graph</button>
+          <button id="viewListBtn" data-i18n="viewList">list</button>
+          <button id="viewStatsBtn" data-i18n="viewStats">stats</button>
+        </div>
+        <button id="hiddenBtn" class="mini" hidden><span data-i18n="archivedWord">archived</span> <b id="hiddenCount">0</b></button>
+        <button id="fitBtn" class="mini" data-i18n="recenter">Re-center</button>
+      </div>
+      <div id="statsView" class="stats-view" hidden>
     <div class="t-stats">
       <div><b id="n-out">—</b><span data-i18n="stOut">you trust</span></div>
       <div><b id="n-in">—</b><span data-i18n="stIn">trust you</span></div>
@@ -104,27 +123,11 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       <div><b id="n-depth">—</b><span data-i18n="stReach">reachable</span></div>
       <div><b id="n-revoked">—</b><span data-i18n="stRevoked">revoked</span></div>
     </div>
-
-    <div class="graph-card">
-      <div class="console-bar"><span class="con-dot"></span>TRUST://GRAPH · LIVE</div>
-      <canvas id="graph"></canvas>
-      <div class="graph-empty" id="graphEmpty">
-        <div class="ge-ico">🔑</div>
-        <span>Connect your wallet to see the keys you trust.</span>
-      </div>
-      <div class="graph-legend" id="legend"></div>
-      <div class="graph-tools">
-        <div class="view-toggle">
-          <button id="viewGraphBtn" class="on" data-i18n="viewGraph">graph</button>
-          <button id="viewListBtn" data-i18n="viewList">list</button>
-        </div>
-        <button id="hiddenBtn" class="mini" hidden><span data-i18n="archivedWord">archived</span> <b id="hiddenCount">0</b></button>
-        <button id="fitBtn" class="mini" data-i18n="recenter">Re-center</button>
       </div>
       <div id="listView" class="list-view" hidden>
         <div class="list-bar">
           <input id="listSearch" data-i18n-ph="searchPh" placeholder="Search name, address, level, tag…">
-          <button id="uploadIdBtn" class="mini strong" data-i18n="uploadId">⇪ identity (.epm / .vcf)</button>
+          <button id="uploadIdBtn" class="mini strong"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8.5" cy="10.5" r="2"/><path d="M14 9h5"/><path d="M14 13h5"/><path d="M5.5 16a3 3 0 0 1 6 0"/></svg><span data-i18n="uploadId">identity (.epm / .vcf)</span></button>
           <input type="file" id="uploadIdFile" accept=".epm,.bin,.vcf,.vcard" hidden>
         </div>
         <div class="list-scroll"><table class="node-table">
@@ -141,8 +144,8 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
         </table></div>
       </div>
       <div class="graph-io">
-        <button id="gExportBtn" title="Export your trust records" data-i18n="exportBtn">⇩ export</button>
-        <button id="gImportBtn" title="Import an SDS archive (.sds FlatBuffers or JSON)" data-i18n="importBtn">⇧ import</button>
+        <button id="gExportBtn" title="Export your trust records"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span data-i18n="exportBtn">export</span></button>
+        <button id="gImportBtn" title="Import an SDS archive (.sds FlatBuffers or JSON)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span data-i18n="importBtn">import</span></button>
         <input type="file" id="gImportFile" accept=".sds,.bin,.json,application/json,application/octet-stream" hidden>
       </div>
     </div>
@@ -458,6 +461,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=10"></script>
+<script type="module" src="assets/trust.js?v=11"></script>
 </body>
 </html>
