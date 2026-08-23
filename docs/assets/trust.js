@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=9";
-import * as EPM from "./epm.js?v=9";
-import { listWallets, connectTo } from "./wallet.js?v=9";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=9";
+import * as SDS from "./sds-store.js?v=10";
+import * as EPM from "./epm.js?v=10";
+import { listWallets, connectTo } from "./wallet.js?v=10";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=10";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);

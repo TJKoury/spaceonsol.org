@@ -85,8 +85,10 @@ img{max-width:100%;display:block}
   70%{box-shadow:0 0 0 5px rgba(70,224,200,0)}
   100%{box-shadow:0 0 0 0 rgba(70,224,200,0)}
 }
-#menu-btn{display:none;align-items:center;justify-content:center;width:56px;height:46px;padding:0;line-height:1;
-  background:none;border:1px solid var(--line2);color:var(--txt);font-size:1.56rem;border-radius:10px;cursor:pointer}
+#menu-btn{display:none;align-items:center;justify-content:center;width:56px;height:46px;padding:0;
+  background:none;border:1px solid var(--line2);border-radius:10px;cursor:pointer;font-size:0;color:transparent}
+#menu-btn::before{content:"";display:block;width:22px;height:14px;
+  background:repeating-linear-gradient(180deg,var(--txt) 0 2px,transparent 2px 6px)}
 
 /* ============ HERO ============ */
 .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;position:relative;padding:120px 24px 80px;overflow:hidden}
@@ -793,3 +795,21 @@ html[data-theme="light"] .btn-primary{color:#063a30;border-color:rgba(13,158,136
   background:linear-gradient(160deg,rgba(13,158,136,.18),rgba(13,158,136,.07))}
 html[data-theme="light"] .btn-primary:hover{border-color:rgba(13,158,136,.75)}
 html[data-theme="light"] .wbtn{color:#063a30}
+
+
+/* light-mode readability: hero wordmark + hardcoded light text */
+html[data-theme="light"] .hero h1{
+  background:linear-gradient(180deg,#141b2b 0%,#2c3a55 55%,#4d5f80 100%);
+  -webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 0 26px rgba(47,111,224,.18))}
+html[data-theme="light"] .hero-bg{background:
+  radial-gradient(ellipse 80% 60% at 50% 0%,rgba(47,111,224,.12),transparent 60%),
+  radial-gradient(ellipse 60% 50% at 70% 100%,rgba(13,158,136,.10),transparent 60%),
+  var(--bg)}
+html[data-theme="light"] .container.narrow p{color:#333c50}
+html[data-theme="light"] .article p{color:#333c50}
+html[data-theme="light"] .mini.strong{color:#063a30}
+html[data-theme="light"] .tab.on{color:#063a30}
+html[data-theme="light"] .send-total b{color:#0d9e88}
+html[data-theme="light"] .goal-card *,html[data-theme="light"] .section-sub b{color:inherit}
+html[data-theme="light"] .prob-close{color:#333c50}
