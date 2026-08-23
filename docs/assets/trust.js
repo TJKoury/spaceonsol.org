@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=17";
-import * as EPM from "./epm.js?v=17";
-import { listWallets, connectTo } from "./wallet.js?v=17";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=17";
+import * as SDS from "./sds-store.js?v=18";
+import * as EPM from "./epm.js?v=18";
+import { listWallets, connectTo } from "./wallet.js?v=18";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=18";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -344,7 +344,6 @@ $("connectBtn").addEventListener("click", async () => {
     const w = await connectTo(entry);
     localStorage.setItem(LAST_WALLET_KEY, entry.name || "");
     finishConnect(w);
-    toast("Wallet connected");
   } catch { toast("Connection rejected", true); }
 });
 
