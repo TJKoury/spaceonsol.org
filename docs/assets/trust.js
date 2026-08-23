@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=12";
-import * as EPM from "./epm.js?v=12";
-import { listWallets, connectTo } from "./wallet.js?v=12";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=12";
+import * as SDS from "./sds-store.js?v=13";
+import * as EPM from "./epm.js?v=13";
+import { listWallets, connectTo } from "./wallet.js?v=13";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=13";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -750,10 +750,7 @@ function downloadBlob(blob, filename) {
   a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
 // Format is chosen at download time, in a modal.
-$("gExportBtn").addEventListener("click", () => {
-  if (!SDS.loadAll().length) return toast("No records to export yet", true);
-  $("exportModal").hidden = false;
-});
+$("gExportBtn").addEventListener("click", () => ($("exportModal").hidden = false));
 $("expCancelBtn").addEventListener("click", () => ($("exportModal").hidden = true));
 $("exportModal").addEventListener("click", (e) => { if (e.target === $("exportModal")) $("exportModal").hidden = true; });
 $("expFbBtn").addEventListener("click", async () => {
@@ -849,17 +846,20 @@ $("uploadIdFile").addEventListener("change", async (e) => {
 
 /* ---------- list view: searchable, sortable table over the same nodes ---------- */
 let listSort = { key: "bal", dir: -1 };
-function setView(mode) {   // "graph" | "list" | "stats"
+function setView(mode) {   // "graph" | "list" | "stats" | "assign"
   $("listView").hidden = mode !== "list";
   $("statsView").hidden = mode !== "stats";
+  $("assignView").hidden = mode !== "assign";
   $("viewGraphBtn").classList.toggle("on", mode === "graph");
   $("viewListBtn").classList.toggle("on", mode === "list");
   $("viewStatsBtn").classList.toggle("on", mode === "stats");
+  $("viewAssignBtn").classList.toggle("on", mode === "assign");
   if (mode === "list") renderList();
 }
 $("viewGraphBtn").addEventListener("click", () => setView("graph"));
 $("viewListBtn").addEventListener("click", () => setView("list"));
 $("viewStatsBtn").addEventListener("click", () => setView("stats"));
+$("viewAssignBtn").addEventListener("click", () => setView("assign"));
 $("listSearch").addEventListener("input", () => renderList());
 document.querySelectorAll(".node-table th").forEach((th) =>
   th.addEventListener("click", () => {
