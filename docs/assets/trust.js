@@ -86,6 +86,40 @@ $("legend").innerHTML =
 /* ---------- address / .sol name resolution ---------- */
 const snsCache = new Map();
 
+/** Reverse lookup: address -> primary .sol name (or null). Filled lazily; the
+ *  canvas reads this map every frame, so names appear as lookups land. */
+const SNS_NAMES = new Map();
+const snsLookingUp = new Set();
+function queueSnsLookup(address) {
+  if (!address || SNS_NAMES.has(address) || snsLookingUp.has(address)) return;
+  snsLookingUp.add(address);
+  (async () => {
+    try {
+      const sns = await import("https://esm.sh/@bonfida/spl-name-service@3.0.4");
+      const c = conn(), owner = new PublicKey(address);
+      // NOTE: the high-level helpers (getFavoriteDomain / reverseLookup) run a
+      // tokenized-domain mint check that public RPCs reject, so we read the
+      // reverse-name account directly instead.
+      const reverseOf = async (domainKey) => {
+        const acc = await c.getAccountInfo(sns.getReverseKeyFromDomainKey(domainKey));
+        return acc ? sns.deserializeReverse(acc.data.slice(96)) : null;
+      };
+      let name = null;
+      try {
+        const [favKey] = sns.FavouriteDomain.getKeySync(sns.NAME_OFFERS_ID, owner);
+        const fav = await sns.FavouriteDomain.retrieve(c, favKey);
+        name = await reverseOf(fav.nameAccount);
+      } catch { /* no primary domain set */ }
+      if (!name) {
+        const domains = await sns.getAllDomains(c, owner).catch(() => []);
+        if (domains.length) name = await reverseOf(domains[0]).catch(() => null);
+      }
+      SNS_NAMES.set(address, name ? name + ".sol" : null);
+    } catch { SNS_NAMES.set(address, null); }
+    finally { snsLookingUp.delete(address); }
+  })();
+}
+
 /** Accept either a base58 address or a Solana Name Service name ("tjkoury.sol",
  *  or bare "tjkoury"). Returns { address, name } or throws with a clear reason. */
 async function resolveAddress(input) {
@@ -400,7 +434,8 @@ function closeNodePop() { npNodeId = null; $("nodePop").hidden = true; }
 
 function openNodePop(node) {
   npNodeId = node.id;
-  $("npAddr").textContent = node.you ? "you · " + short(node.id) : short(node.id);
+  const nm = SNS_NAMES.get(node.id);
+  $("npAddr").textContent = (node.you ? "you · " + short(node.id) : short(node.id)) + (nm ? " · " + nm : "");
   $("npAddr").title = node.id;
   const edge = wallet && !node.you
     ? SDS.projectEdgesWithTombstones().find((e) => e.EDGE_ID === `${wallet}->${node.id}`)
@@ -856,7 +891,9 @@ const Graph = (() => {
     const p = posCache.get(id);
     const n = { id, x: p ? p.x : W/2 + (Math.random()-.5)*200, y: p ? p.y : H/2 + (Math.random()-.5)*200,
       vx: 0, vy: 0, r: o.you ? 18 : 11, you: !!o.you, level: o.level || "Standard" };
-    nodes.set(id, n); return n;
+    nodes.set(id, n);
+    queueSnsLookup(id);
+    return n;
   };
   const addEdge = (from, to, weight, level, revoked, depth) => {
     edges.set(from + ">" + to, { from, to, weight, level, revoked, depth });
@@ -912,6 +949,12 @@ const Graph = (() => {
       ctx.font = (n.you ? "700 " : "600 ") + "11px system-ui,sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(n.you ? "you" : short(n.id), n.x, n.y + n.r + 14);
+      const nm = SNS_NAMES.get(n.id);
+      if (nm) {
+        ctx.fillStyle = "rgba(70,224,200,.85)";
+        ctx.font = "600 9.5px system-ui,sans-serif";
+        ctx.fillText(nm, n.x, n.y + n.r + 26);
+      }
     }
     ctx.textAlign = "start";
   }
@@ -924,7 +967,7 @@ const Graph = (() => {
     if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 4) moved = true;
     if (drag && moved) { drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; return; }
     const n = hit(p); canvas.style.cursor = n ? "pointer" : "";
-    canvas.title = n ? `${n.id}\n${n.you ? "your key" : n.level + " trust"} — click to edit` : "";
+    canvas.title = n ? `${n.id}${SNS_NAMES.get(n.id) ? "\n" + SNS_NAMES.get(n.id) : ""}\n${n.you ? "your key" : n.level + " trust"} — click to edit` : "";
   });
   addEventListener("mouseup", (e) => {
     if (downAt && !moved && e.target === canvas && clickCb) clickCb(drag || null);
