@@ -56,7 +56,7 @@ const envelope = (code) => ({
 });
 
 /* ---------------- TRE — Trust Edge Record ---------------- */
-export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, providerPeerId = null, providerSignature = null, note = "", signature = null, amount = null, xAccount = "" }) {
+export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, providerPeerId = null, providerSignature = null, note = "", signature = null, amount = null, xAccount = "", tag = "" }) {
   const lvl = level ? levelBySds(level) : null;
   return {
     ...envelope("TRE"),
@@ -72,6 +72,7 @@ export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, 
     _level: lvl ? lvl.sds : levelByWeight(weight ?? 0.5).sds,
     _note: note,
     _xAccount: xAccount,
+    _tag: tag,
     _txSignature: signature,
     _amount: amount,
   };
@@ -300,7 +301,7 @@ const localsOf = (r) => Object.fromEntries(Object.entries(r).filter(([k]) => k.s
 export async function toFlatBufferArchive(records = loadAll()) {
   const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
     [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
-  const EPMlib = await import("./epm.js?v=5");
+  const EPMlib = await import("./epm.js?v=6");
 
   const chunks = [], ids = [], stds = [], locals = {}, extra = [];
   const str = (B, v) => (v ? B.createString(String(v)) : null);
@@ -368,7 +369,7 @@ export async function toFlatBufferArchive(records = loadAll()) {
 export async function importFlatBufferArchive(bytes) {
   const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
     [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
-  const EPMlib = await import("./epm.js?v=5");
+  const EPMlib = await import("./epm.js?v=6");
 
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const msgs = [];

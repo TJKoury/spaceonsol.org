@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=5";
-import * as EPM from "./epm.js?v=5";
-import { listWallets, connectTo } from "./wallet.js?v=5";
+import * as SDS from "./sds-store.js?v=6";
+import * as EPM from "./epm.js?v=6";
+import { listWallets, connectTo } from "./wallet.js?v=6";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -86,6 +86,102 @@ $("legend").innerHTML =
 /* ---------- address / .sol name resolution ---------- */
 const snsCache = new Map();
 
+/* ---------- tutorial carousel ---------- */
+(() => {
+  const track = $("tutTrack"), dots = $("tutDots");
+  if (!track) return;
+  const n = track.children.length;
+  let i = 0, timer = null;
+  for (let k = 0; k < n; k++) {
+    const d = document.createElement("button");
+    d.className = "tut-dot"; d.setAttribute("aria-label", "Slide " + (k + 1));
+    d.addEventListener("click", () => go(k, true));
+    dots.appendChild(d);
+  }
+  function go(k, manual) {
+    i = (k + n) % n;
+    track.style.transform = `translateX(-${i * 100}%)`;
+    [...dots.children].forEach((d, j) => d.classList.toggle("on", j === i));
+    if (manual) restart();
+  }
+  function restart() { clearInterval(timer); timer = setInterval(() => go(i + 1), 7000); }
+  $("tutPrev").addEventListener("click", () => go(i - 1, true));
+  $("tutNext").addEventListener("click", () => go(i + 1, true));
+  $("tut").addEventListener("mouseenter", () => clearInterval(timer));
+  $("tut").addEventListener("mouseleave", restart);
+  go(0); restart();
+})();
+
+/* ---------- hidden nodes ---------- */
+const HIDDEN_KEY = "sdn.trust.hidden.v1";
+let hiddenNodes = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"));
+function saveHidden() {
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenNodes]));
+  const btn = $("hiddenBtn");
+  btn.hidden = !hiddenNodes.size;
+  $("hiddenCount").textContent = hiddenNodes.size;
+}
+
+/** Plain-text USD for the canvas (no HTML subscripts). */
+const usdPlain = (n) => n == null ? null
+  : n >= 1e6 ? "$" + (n/1e6).toFixed(1) + "M" : n >= 1e3 ? "$" + (n/1e3).toFixed(1) + "K"
+  : n >= 1 ? "$" + n.toFixed(0) : n > 0 ? "$" + n.toFixed(2) : "$0";
+
+/** Account info per node: SOL lamports + what KIND of account this is.
+ *  "wallet"  — ordinary system-owned account
+ *  "empty"   — no account on chain yet (fresh key)
+ *  "program" — executable
+ *  "sys"     — owned by another program (token account, PDA, vault, …);
+ *              tokens sent to these don't show up as normal holdings. */
+const SOL_BAL = new Map();
+const ACCT_TYPE = new Map();
+const acctLookingUp = new Set();
+const SYSTEM_PROGRAM = "11111111111111111111111111111111";
+function queueSolLookup(address) {
+  if (!address || ACCT_TYPE.has(address) || acctLookingUp.has(address)) return;
+  acctLookingUp.add(address);
+  (async () => {
+    let done = false;
+    try {
+      const info = await conn().getAccountInfo(new PublicKey(address));
+      SOL_BAL.set(address, info?.lamports || 0);
+      ACCT_TYPE.set(address, !info ? "empty"
+        : info.executable ? "program"
+        : info.owner.toBase58() !== SYSTEM_PROGRAM ? "sys" : "wallet");
+      done = true;
+      maybeAutoUntrust(address, SPACE_BAL.get(address));
+    } catch (e) { console.warn("account lookup failed, will retry", address, e); }
+    acctLookingUp.delete(address);
+    if (!done) setTimeout(() => queueSolLookup(address), 20_000);
+  })();
+}
+const TYPE_BADGE = { program: "PROGRAM", sys: "SYS ACCT" };
+
+/** Total wallet value in USD (SOL + $SPACE), when everything is known. */
+function walletValueUsd(address) {
+  const lam = SOL_BAL.get(address), space = SPACE_BAL.get(address);
+  if (lam == null || space == null || !(solPriceUsd || spacePriceUsd)) return null;
+  return (lam / 1e9) * solPriceUsd + space * spacePriceUsd;
+}
+
+/** A key drained to 0 $SPACE is treated as compromised: auto-flag Untrusted.
+ *  Special accounts (programs, PDAs, tagged addresses) are exempt — a vault
+ *  or system account holding 0 in its direct ATA is not a drained wallet. */
+function maybeAutoUntrust(address, balance) {
+  if (balance !== 0 || !wallet || address === wallet) return;
+  const type = ACCT_TYPE.get(address);
+  if (type === undefined || type === "program" || type === "sys") return;
+  const edge = SDS.projectEdges().find((e) => e.EDGE_ID === `${wallet}->${address}`);
+  if (!edge || edge._level === "Untrusted" || edge._tag) return;
+  SDS.addRecord(SDS.makeTRE({
+    trusterId: wallet, trusteeId: address, level: "Untrusted",
+    note: ((edge._note || "") + " · auto: $SPACE drained to 0").replace(/^ · /, ""),
+    xAccount: edge._xAccount || "", amount: edge._amount ?? null, signature: edge._txSignature ?? null,
+  }));
+  redraw(); renderRecords();
+  toast(`${short(address)} drained to 0 $SPACE — auto-set to Untrusted`, true);
+}
+
 /** $SPACE balance per node: address -> uiAmount. Lazy like the SNS lookup;
  *  drawn inside each bubble as it lands. Missing ATA counts as 0. */
 const SPACE_BAL = new Map();
@@ -102,8 +198,10 @@ function queueBalLookup(address) {
         if (/could not find account/i.test(e?.message || "")) return null;  // no ATA = holds 0
         throw e;
       });
-      SPACE_BAL.set(address, bal ? Number(bal.value.uiAmount || 0) : 0);
+      const amount = bal ? Number(bal.value.uiAmount || 0) : 0;
+      SPACE_BAL.set(address, amount);
       done = true;
+      maybeAutoUntrust(address, amount);
     } catch (e) { console.warn("balance lookup failed, will retry", address, e); }
     balLookingUp.delete(address);
     if (!done) setTimeout(() => queueBalLookup(address), 20_000);
@@ -428,10 +526,13 @@ function statusLine() {
   return base + " Watching the chain — new $SPACE transfers import automatically. Click a node to set its level.";
 }
 
+const NODE_TAGS = new Map();   // address -> manual tag from its edge
 function redraw() {
   Graph.reset();
   const all = SDS.projectEdgesWithTombstones();
   const live = all.filter((e) => !e.DELETED);
+  NODE_TAGS.clear();
+  for (const e of live) if (e._tag) NODE_TAGS.set(e.TRUSTEE_ID, e._tag);
 
   if (wallet) {
     Graph.addNode(wallet, { you: true, level: "Admin" });
@@ -442,6 +543,7 @@ function redraw() {
       const next = [];
       for (const from of frontier) {
         for (const e of live.filter((x) => x.TRUSTER_ID === from)) {
+          if (hiddenNodes.has(e.TRUSTEE_ID)) continue;
           Graph.addNode(e.TRUSTEE_ID, { level: e._level });
           Graph.addEdge(e.TRUSTER_ID, e.TRUSTEE_ID, e.WEIGHT, e._level, false, depth);
           if (!seen.has(e.TRUSTEE_ID)) { seen.add(e.TRUSTEE_ID); next.push(e.TRUSTEE_ID); }
@@ -451,12 +553,14 @@ function redraw() {
     }
     // inbound edges (who trusts you)
     for (const e of live.filter((x) => x.TRUSTEE_ID === wallet)) {
+      if (hiddenNodes.has(e.TRUSTER_ID)) continue;
       Graph.addNode(e.TRUSTER_ID, { level: e._level });
       Graph.addEdge(e.TRUSTER_ID, wallet, e.WEIGHT, e._level, false, 0);
       seen.add(e.TRUSTER_ID);
     }
     // revoked edges you issued, shown dashed
     for (const e of all.filter((x) => x.DELETED && x.TRUSTER_ID === wallet)) {
+      if (hiddenNodes.has(e.TRUSTEE_ID)) continue;
       Graph.addNode(e.TRUSTEE_ID, { level: "Untrusted" });
       Graph.addEdge(e.TRUSTER_ID, e.TRUSTEE_ID, 0, "Untrusted", true, 0);
     }
@@ -500,9 +604,29 @@ function openNodePop(node) {
   npNodeId = node.id;
   npSavedId = null;
   $("npSaved").hidden = true;
+
+  // SNS name is the headline when it exists; the address is always a link out.
   const nm = SNS_NAMES.get(node.id);
-  $("npAddr").textContent = (node.you ? "you · " + short(node.id) : short(node.id)) + (nm ? " · " + nm : "");
-  $("npAddr").title = node.id;
+  const name = $("npName"), sub = $("npSub");
+  const explorer = "https://solscan.io/account/" + node.id;
+  if (nm) {
+    name.textContent = (node.you ? "you · " : "") + nm;
+    name.href = "https://www.sns.id/domain/" + nm.replace(/\.sol$/, "");
+    sub.textContent = node.id;
+    sub.href = explorer;
+    sub.classList.remove("nm-missing");
+  } else {
+    name.textContent = (node.you ? "you · " : "") + short(node.id);
+    name.href = explorer;
+    name.title = node.id;
+    sub.textContent = "(SNS not found)";
+    sub.removeAttribute("href");
+    sub.classList.add("nm-missing");
+  }
+  const typeBadge = NODE_TAGS.get(node.id) || TYPE_BADGE[ACCT_TYPE.get(node.id)];
+  $("npType").hidden = !typeBadge || !!node.you;
+  $("npType").textContent = typeBadge ? "⚠ " + typeBadge.toUpperCase() : "";
+  $("npHide").hidden = !!node.you;   // you can't hide yourself
   const edge = wallet && !node.you
     ? SDS.projectEdgesWithTombstones().find((e) => e.EDGE_ID === `${wallet}->${node.id}`)
     : null;
@@ -519,6 +643,7 @@ function openNodePop(node) {
   } else {
     body.hidden = false;
     $("npLevel").value = edge._level || "Standard";
+    $("npTag").value = edge._tag || "";
     $("npNote").value = edge._note || "";
     $("npX").value = edge._xAccount ? "@" + edge._xAccount : "";
     updateNpXLink();
@@ -526,25 +651,18 @@ function openNodePop(node) {
     if (edge.DELETED) hint.textContent = "Revoked — changing the level re-instates this edge locally.";
   }
   $("nodePop").hidden = false;
-  positionNodePop();
 }
-
-/** Keep the popover pinned to its node while the simulation moves it. */
-function positionNodePop() {
-  if (!npNodeId) return;
-  const n = Graph.getNode(npNodeId);
-  if (!n) return closeNodePop();
-  const pop = $("nodePop"), card = pop.parentElement;
-  const pw = pop.offsetWidth || 240, ph = pop.offsetHeight || 150;
-  let x = n.x + n.r + 12, y = n.y - 18;
-  if (x + pw > card.clientWidth - 8) x = n.x - n.r - 12 - pw;   // flip left
-  x = Math.max(8, Math.min(card.clientWidth - pw - 8, x));
-  y = Math.max(8, Math.min(card.clientHeight - ph - 8, y));
-  pop.style.left = x + "px"; pop.style.top = y + "px";
-}
-requestAnimationFrame(function popFollow() { positionNodePop(); requestAnimationFrame(popFollow); });
 
 $("npClose").addEventListener("click", closeNodePop);
+$("nodePop").addEventListener("click", (e) => { if (e.target === $("nodePop")) closeNodePop(); });
+$("npHide").addEventListener("click", () => {
+  if (!npNodeId) return;
+  hiddenNodes.add(npNodeId);
+  saveHidden();
+  toast(`${short(npNodeId)} hidden — reopen it from the "hidden" menu`);
+  closeNodePop();
+  redraw();
+});
 
 function updateNpXLink() {
   const h = cleanXHandle($("npX").value);
@@ -567,7 +685,7 @@ function saveNodeEdits() {
   const rec = SDS.makeTRE({
     trusterId: wallet, trusteeId: npNodeId,
     level: $("npLevel").value, note: $("npNote").value.trim(),
-    xAccount: cleanXHandle($("npX").value),
+    xAccount: cleanXHandle($("npX").value), tag: $("npTag").value,
     amount: prior?._amount ?? null, signature: prior?._txSignature ?? null,
   });
   SDS.addRecord(rec);
@@ -583,6 +701,7 @@ function queueNodeSave() {
   npSaveTimer = setTimeout(() => { npSaveTimer = null; saveNodeEdits(); }, 700);
 }
 $("npLevel").addEventListener("change", () => { clearTimeout(npSaveTimer); npSaveTimer = null; saveNodeEdits(); });
+$("npTag").addEventListener("change", () => { clearTimeout(npSaveTimer); npSaveTimer = null; saveNodeEdits(); });
 $("npNote").addEventListener("input", queueNodeSave);
 $("npX").addEventListener("input", queueNodeSave);
 
@@ -592,21 +711,54 @@ function downloadBlob(blob, filename) {
   const a = document.createElement("a");
   a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
-$("gExportBtn").addEventListener("click", async () => {
+// Format is chosen at download time, in a modal.
+$("gExportBtn").addEventListener("click", () => {
+  if (!SDS.loadAll().length) return toast("No records to export yet", true);
+  $("exportModal").hidden = false;
+});
+$("expCancelBtn").addEventListener("click", () => ($("exportModal").hidden = true));
+$("exportModal").addEventListener("click", (e) => { if (e.target === $("exportModal")) $("exportModal").hidden = true; });
+$("expFbBtn").addEventListener("click", async () => {
+  $("exportModal").hidden = true;
   const all = SDS.loadAll();
-  if (!all.length) return toast("No records to export yet", true);
   try {
     const bytes = await SDS.toFlatBufferArchive(all);
     downloadBlob(new Blob([bytes], { type: "application/octet-stream" }), SDS.fbFilename());
     toast(`Exported ${all.length} records as size-prefixed FlatBuffers`);
   } catch (e) { toast("Export failed: " + (e.message || e), true); }
 });
-$("gExportJsonBtn").addEventListener("click", () => {
+$("expJsonBtn").addEventListener("click", () => {
+  $("exportModal").hidden = true;
   const all = SDS.loadAll();
-  if (!all.length) return toast("No records to export yet", true);
   downloadBlob(SDS.toBlob(all), SDS.suggestedFilename());
   toast(`Exported ${all.length} records as JSON`);
 });
+
+/* ---------- hidden nodes modal ---------- */
+function renderHiddenList() {
+  const q = ($("hiddenFilter").value || "").toLowerCase().trim();
+  const rows = [...hiddenNodes].filter((a) => {
+    const nm = (SNS_NAMES.get(a) || "").toLowerCase();
+    return !q || a.toLowerCase().includes(q) || nm.includes(q);
+  });
+  $("hiddenList").innerHTML = rows.length ? rows.map((a) => {
+    const nm = SNS_NAMES.get(a);
+    return `<div class="hidden-row">
+      <div class="hidden-id"><b>${nm || short(a)}</b><small title="${a}">${nm ? short(a) : a.slice(0, 20) + "…"}</small></div>
+      <button class="mini strong" data-show="${a}">show</button></div>`;
+  }).join("") : `<p class="rec-empty">${hiddenNodes.size ? "No matches." : "Nothing hidden."}</p>`;
+  $("hiddenList").querySelectorAll("[data-show]").forEach((b) =>
+    b.addEventListener("click", () => {
+      hiddenNodes.delete(b.dataset.show);
+      saveHidden(); renderHiddenList(); redraw();
+    }));
+}
+$("hiddenBtn").addEventListener("click", () => { $("hiddenFilter").value = ""; renderHiddenList(); $("hiddenModal").hidden = false; });
+$("hiddenFilter").addEventListener("input", renderHiddenList);
+$("hiddenShowAllBtn").addEventListener("click", () => { hiddenNodes.clear(); saveHidden(); renderHiddenList(); redraw(); });
+$("hiddenCloseBtn").addEventListener("click", () => ($("hiddenModal").hidden = true));
+$("hiddenModal").addEventListener("click", (e) => { if (e.target === $("hiddenModal")) $("hiddenModal").hidden = true; });
+saveHidden();   // initialise the "hidden (n)" button state
 $("gImportBtn").addEventListener("click", () => $("gImportFile").click());
 $("gImportFile").addEventListener("change", async (e) => {
   const f = e.target.files[0]; if (!f) return;
@@ -988,10 +1140,11 @@ const Graph = (() => {
     if (nodes.has(id)) { if (o.you) nodes.get(id).you = true; if (o.level) nodes.get(id).level = o.level; return nodes.get(id); }
     const p = posCache.get(id);
     const n = { id, x: p ? p.x : W/2 + (Math.random()-.5)*200, y: p ? p.y : H/2 + (Math.random()-.5)*200,
-      vx: 0, vy: 0, r: o.you ? 27 : 20, you: !!o.you, level: o.level || "Standard" };
+      vx: 0, vy: 0, r: o.you ? 33 : 27, you: !!o.you, level: o.level || "Standard" };
     nodes.set(id, n);
     queueSnsLookup(id);
     queueBalLookup(id);
+    queueSolLookup(id);
     return n;
   };
   const addEdge = (from, to, weight, level, revoked, depth) => {
@@ -1001,13 +1154,13 @@ const Graph = (() => {
     const arr = [...nodes.values()];
     for (const a of arr) for (const b of arr) {
       if (a === b) continue;
-      const dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx+dy*dy || .01, d = Math.sqrt(d2), f = 5600/d2;
+      const dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx+dy*dy || .01, d = Math.sqrt(d2), f = 9800/d2;
       a.vx += dx/d*f; a.vy += dy/d*f;
     }
     for (const e of edges.values()) {
       const a = nodes.get(e.from), b = nodes.get(e.to); if (!a || !b) continue;
       // stronger trust pulls closer
-      const rest = 90 + (1 - (e.weight || .5)) * 90;
+      const rest = 125 + (1 - (e.weight || .5)) * 95;
       const dx = b.x-a.x, dy = b.y-a.y, d = Math.hypot(dx, dy) || .01, f = .012*(d-rest);
       a.vx += dx/d*f; a.vy += dy/d*f; b.vx -= dx/d*f; b.vy -= dy/d*f;
     }
@@ -1044,22 +1197,36 @@ const Graph = (() => {
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(255,255,255,.2)"; ctx.lineWidth = 1.3;
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.stroke();
-      // $SPACE held at this key, inside the bubble
+      // account-type / manual tag badge above the bubble
+      const tag = NODE_TAGS.get(n.id) || TYPE_BADGE[ACCT_TYPE.get(n.id)];
+      if (tag && !n.you) {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffc25c";
+        ctx.font = "700 10px ui-monospace,Menlo,monospace";
+        ctx.fillText(tag.toUpperCase(), n.x, n.y - n.r - 8);
+      }
+      // $SPACE held at this key + total wallet value, inside the bubble
       const bal = SPACE_BAL.get(n.id);
+      const val = walletValueUsd(n.id);
       ctx.textAlign = "center";
       if (bal != null) {
-        ctx.fillStyle = "rgba(4,6,10,.92)";
-        ctx.font = "700 " + (n.you ? "11px" : "9px") + " ui-monospace,Menlo,monospace";
-        ctx.fillText(fmtC(bal), n.x, n.y + 3.5);
+        ctx.fillStyle = "rgba(4,6,10,.94)";
+        ctx.font = "700 " + (n.you ? "14px" : "12px") + " ui-monospace,Menlo,monospace";
+        ctx.fillText(fmtC(bal), n.x, n.y + (val != null ? -1 : 4.5));
+        if (val != null) {
+          ctx.font = "600 " + (n.you ? "10.5px" : "9.5px") + " ui-monospace,Menlo,monospace";
+          ctx.fillStyle = "rgba(4,6,10,.78)";
+          ctx.fillText("(" + usdPlain(val) + ")", n.x, n.y + 12);
+        }
       }
-      ctx.fillStyle = n.you ? "#e7ecf3" : "#aeb7c9";
-      ctx.font = (n.you ? "700 " : "600 ") + "11px system-ui,sans-serif";
-      ctx.fillText(n.you ? "you" : short(n.id), n.x, n.y + n.r + 14);
+      ctx.fillStyle = n.you ? "#e7ecf3" : "#c6cddb";
+      ctx.font = (n.you ? "700 " : "600 ") + "13.5px system-ui,sans-serif";
+      ctx.fillText(n.you ? "you" : short(n.id), n.x, n.y + n.r + 17);
       const nm = SNS_NAMES.get(n.id);
       if (nm) {
-        ctx.fillStyle = "rgba(70,224,200,.85)";
-        ctx.font = "600 9.5px system-ui,sans-serif";
-        ctx.fillText(nm, n.x, n.y + n.r + 26);
+        ctx.fillStyle = "rgba(70,224,200,.9)";
+        ctx.font = "600 12px system-ui,sans-serif";
+        ctx.fillText(nm, n.x, n.y + n.r + 32);
       }
     }
     ctx.textAlign = "start";
