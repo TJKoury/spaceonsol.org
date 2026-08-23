@@ -125,16 +125,17 @@ function bs58(bytes) {
 /* ---------------- connect ---------------- */
 
 /** Connect to a specific entry from listWallets(). */
-export async function connectTo(entry) {
+export async function connectTo(entry, { silent = false } = {}) {
   if (entry.__std) {
     const w = entry.__std;
-    const { accounts } = await w.features["standard:connect"].connect();
+    // Wallet Standard: silent:true asks for a no-prompt reconnect if trusted
+    const { accounts } = await w.features["standard:connect"].connect(silent ? { silent: true } : {});
     const account = accounts?.[0] || w.accounts?.[0];
     if (!account) throw new Error(`${w.name} returned no account`);
     return adaptStandard(w, account);
   }
   const p = entry.__legacy;
-  await p.connect();
+  await p.connect(silent ? { onlyIfTrusted: true } : undefined);
   if (!p.publicKey) throw new Error("Wallet returned no public key");
   return adaptLegacy(p);
 }

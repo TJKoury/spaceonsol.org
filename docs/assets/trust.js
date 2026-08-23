@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=16";
-import * as EPM from "./epm.js?v=16";
-import { listWallets, connectTo } from "./wallet.js?v=16";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=16";
+import * as SDS from "./sds-store.js?v=17";
+import * as EPM from "./epm.js?v=17";
+import { listWallets, connectTo } from "./wallet.js?v=17";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=17";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -330,6 +330,7 @@ $("connectBtn").addEventListener("click", async () => {
     $("walletChip").hidden = true;
     ["assignBtn", "signEpmBtn", "msgSignBtn"].forEach((i) => $(i).disabled = true);
     $("syncInfo").textContent = "Not connected.";
+    localStorage.removeItem(LAST_WALLET_KEY);
     stopChainSync();
     closeNodePop();
     Graph.setYou(null); redraw();
@@ -341,6 +342,16 @@ $("connectBtn").addEventListener("click", async () => {
   if (!entry) return;
   try {
     const w = await connectTo(entry);
+    localStorage.setItem(LAST_WALLET_KEY, entry.name || "");
+    finishConnect(w);
+    toast("Wallet connected");
+  } catch { toast("Connection rejected", true); }
+});
+
+const LAST_WALLET_KEY = "sdn.wallet.last";
+
+function finishConnect(w) {
+  {
     provider = w; wallet = w.publicKey.toString();
     walletPubBytes = w.publicKey.toBytes();
     $("wlabel").textContent = short(wallet); $("connectBtn").classList.add("on");
@@ -354,11 +365,24 @@ $("connectBtn").addEventListener("click", async () => {
     if (!SDS.byStandard("TNR").some((r) => r.NODE_ID === wallet))
       SDS.addRecord(SDS.makeTNR({ nodeId: wallet, label: "self" }));
     redraw(); renderRecords();
-    toast("Wallet connected");
     refreshMyBond();
     startChainSync();   // auto-import transfers + watch for new ones
-  } catch { toast("Connection rejected", true); }
-});
+  }
+}
+
+// silent auto-reconnect after the first successful connection
+(async function autoConnect() {
+  const last = localStorage.getItem(LAST_WALLET_KEY);
+  if (last === null) return;
+  for (let i = 0; i < 6 && !wallet; i++) {
+    await new Promise((r) => setTimeout(r, 250 * (i + 1)));   // wallets register async
+    const list = await listWallets().catch(() => []);
+    const entry = list.find((e) => e.name === last) || (list.length === 1 ? list[0] : null);
+    if (!entry) continue;
+    try { finishConnect(await connectTo(entry, { silent: true })); } catch { /* not trusted yet — stay quiet */ }
+    return;
+  }
+})();
 
 /* ---------- assign trust (TRE) ---------- */
 /** Send $SPACE and return the tx signature. Throws with a readable reason. */
@@ -1415,22 +1439,29 @@ const Graph = (() => {
     for (const e of edges.values()) {
       const a = nodes.get(e.from), b = nodes.get(e.to); if (!a || !b) continue;
       const col = e.kind === "request" ? "#ffc25c" : levelColor(e.level);
+      const ang = Math.atan2(b.y-a.y, b.x-a.x);
+      const cos = Math.cos(ang), sin = Math.sin(ang);
+      const HL = 13;                                        // arrowhead length
+      // node-edge endpoints; the LINE stops at the arrow base so heads cap the line
+      const sx = a.x + cos*(a.r+3), sy = a.y + sin*(a.r+3); // tip at a (mutual)
+      const tx = b.x - cos*(b.r+3), ty = b.y - sin*(b.r+3); // tip at b
+      const lx1 = e.kind === "mutual" ? sx + cos*(HL-2) : sx;
+      const ly1 = e.kind === "mutual" ? sy + sin*(HL-2) : sy;
+      const lx2 = tx - cos*(HL-2), ly2 = ty - sin*(HL-2);
       ctx.save();
       if (e.revoked) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "rgba(255,107,107,.55)"; ctx.lineWidth = 1.4; }
       else if (e.kind === "request") { ctx.setLineDash([3, 5]); ctx.strokeStyle = "rgba(255,194,92,.7)"; ctx.lineWidth = 1.8; }
       else { ctx.strokeStyle = col + "aa"; ctx.lineWidth = 1 + (e.weight || .5) * 3.6; }
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
-      const head = (fromN, toN) => {   // arrowhead entering toN
-        const ang = Math.atan2(toN.y-fromN.y, toN.x-fromN.x);
-        const bx = toN.x-Math.cos(ang)*(toN.r+3), by = toN.y-Math.sin(ang)*(toN.r+3);
-        ctx.beginPath(); ctx.moveTo(bx, by);
-        ctx.lineTo(bx-Math.cos(ang-.4)*8, by-Math.sin(ang-.4)*8);
-        ctx.lineTo(bx-Math.cos(ang+.4)*8, by-Math.sin(ang+.4)*8);
+      ctx.beginPath(); ctx.moveTo(lx1, ly1); ctx.lineTo(lx2, ly2); ctx.stroke(); ctx.restore();
+      const head = (x, y, dir) => {                         // triangle with tip at (x,y)
+        ctx.beginPath(); ctx.moveTo(x, y);
+        ctx.lineTo(x - Math.cos(dir - .42)*HL, y - Math.sin(dir - .42)*HL);
+        ctx.lineTo(x - Math.cos(dir + .42)*HL, y - Math.sin(dir + .42)*HL);
         ctx.closePath(); ctx.fill();
       };
       ctx.fillStyle = e.revoked ? "rgba(255,107,107,.85)" : col;
-      head(a, b);                                   // transfer went from -> to
-      if (e.kind === "mutual") head(b, a);          // …and back
+      head(tx, ty, ang);                                    // transfer went from -> to
+      if (e.kind === "mutual") head(sx, sy, ang + Math.PI); // …and back
     }
     for (const n of nodes.values()) {
       const col = n.you ? "#46e0c8" : levelColor(n.level);
