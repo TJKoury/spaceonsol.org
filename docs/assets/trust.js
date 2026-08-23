@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=18";
-import * as EPM from "./epm.js?v=18";
-import { listWallets, connectTo } from "./wallet.js?v=18";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=18";
+import * as SDS from "./sds-store.js?v=19";
+import * as EPM from "./epm.js?v=19";
+import { listWallets, connectTo } from "./wallet.js?v=19";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=19";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -69,7 +69,6 @@ const levelColor = (s) => LEVEL_COLORS[s] || "#6ea8ff";
 SDS.TRUST_LEVELS.forEach((l) =>
   $("trustLevel").add(new Option(`${l.sds} — PGP “${l.pgp}” (weight ${l.weight})`, l.sds)));
 $("trustLevel").value = "Trusted";
-SDS.REVOCATION_REASONS.forEach(([v, l]) => $("revokeReason").add(new Option(l, v)));
 
 $("legend").innerHTML =
   SDS.TRUST_LEVELS.map((l) => `<span><i style="background:${levelColor(l.sds)}"></i>${l.sds}</span>`).join("") +
@@ -491,21 +490,6 @@ $("assignBtn").addEventListener("click", async () => {
   toast(`Sent ${amt} $SPACE — ${level} trust established with ${short(to)}`);
 });
 
-/* ---------- revoke (TRE tombstone) ---------- */
-$("revokeBtn").addEventListener("click", async () => {
-  if (!wallet) return toast("Connect a wallet — a revocation is issued by your key", true);
-  let subject;
-  try { subject = await resolveField("revokeAddr"); }
-  catch (e) { return toast(e.message, true); }
-  SDS.addRecord(SDS.makeTombstone({
-    trusterId: wallet, trusteeId: subject,
-    reason: $("revokeReason").value, note: $("revokeNote").value.trim(),
-  }));
-  $("revokeAddr").value = $("revokeNote").value = "";
-  redraw(); renderRecords();
-  toast(`Trust revoked for ${short(subject)}`);
-});
-
 function showCycle(cycle) {
   const el = $("cycleWarn");
   el.hidden = false;
@@ -904,7 +888,7 @@ function rebuildIdentities() {
       const mm = String(m).match(/[1-9A-HJ-NP-Za-km-z]{32,44}$/);
       if (mm) addrs.add(mm[0]);
     }
-    for (const a of addrs) IDENTITIES.set(a, { name, ok: !!r._sigOk });
+    for (const a of addrs) IDENTITIES.set(a, { name, ok: !!r._sigOk, rec: r });
   }
 }
 rebuildIdentities();
@@ -995,7 +979,8 @@ function renderList() {
   });
   $("listRows").innerHTML = rows.length ? rows.map((r) => `
     <tr data-node="${r.id}">
-      <td class="nt-id">${r.identity ? r.identity + (IDENTITIES.get(r.id)?.ok ? " ✓" : "") : "—"}</td>
+      <td><button class="mini vcard-btn" data-vcard="${r.id}" title="${r.identity || "No identity on file"}"
+        ${r.identity ? "" : "disabled"}>vCard</button></td>
       <td class="nt-name">${r.sns || "—"}</td>
       <td class="nt-addr" title="${r.addr}">${r.you ? "you · " : ""}${short(r.addr)}</td>
       <td>${r.conn === "mutual" ? '<span class="nt-conn c-mut">⇄ mutual</span>'
@@ -1009,6 +994,18 @@ function renderList() {
     : `<tr><td colspan="8" class="nt-empty">${i18t(LANG, "listEmpty")}</td></tr>`;
   $("listRows").querySelectorAll("[data-node]").forEach((tr) =>
     tr.addEventListener("click", () => openNodePop({ id: tr.dataset.node, you: tr.dataset.node === wallet })));
+  $("listRows").querySelectorAll("[data-vcard]:not([disabled])").forEach((b) =>
+    b.addEventListener("click", async (ev) => {
+      ev.stopPropagation();   // don't open the node modal
+      const ident = IDENTITIES.get(b.dataset.vcard);
+      if (!ident?.rec) return;
+      try {
+        const { vcard } = await EPM.toVCard(ident.rec, { peerId: b.dataset.vcard,
+          directoryKind: (ident.rec.ENTITY_TYPE || "User").toLowerCase() });
+        downloadBlob(new Blob([vcard], { type: "text/vcard" }),
+          (ident.name || b.dataset.vcard.slice(0, 8)).replace(/\W+/g, "-").toLowerCase() + ".vcf");
+      } catch (e) { toast("vCard failed: " + (e.message || e), true); }
+    }));
 }
 $("gImportBtn").addEventListener("click", () => $("gImportFile").click());
 $("gImportFile").addEventListener("change", async (e) => {

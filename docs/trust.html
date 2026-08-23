@@ -9,7 +9,7 @@
 <script>(function(){var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;
 window.__toggleTheme=function(){var d=document.documentElement,n=d.dataset.theme==="light"?"dark":"light";
 d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
-<link rel="stylesheet" href="assets/style.css?v=18">
+<link rel="stylesheet" href="assets/style.css?v=19">
 </head>
 <body class="app">
 
@@ -137,10 +137,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       </div>
       <div id="assignView" class="assign-view" hidden>
         <div class="assign-inner">
-    <div class="tabs">
-      <button class="tab on" data-tab="give">Establish trust</button>
-      <button class="tab" data-tab="revoke">Revoke</button>
-    </div>
 
     <div class="tabpane on" id="pane-give">
       <label>Key / wallet you are certifying<input id="toAddr" placeholder="Solana address or name.sol"></label>
@@ -157,14 +153,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       <button id="assignBtn" class="btn btn-primary" disabled>Send $SPACE &amp; establish trust</button>
     </div>
 
-    <div class="tabpane" id="pane-revoke">
-      <label>Key to revoke<input id="revokeAddr" placeholder="Solana address or name.sol"></label>
-      <div class="row2">
-        <label>Reason<select id="revokeReason"></select></label>
-        <label>Note<input id="revokeNote" placeholder="Optional"></label>
-      </div>
-      <button id="revokeBtn" class="btn btn-danger">Revoke trust</button>
-    </div>
         </div>
       </div>
       <div id="listView" class="list-view" hidden>
@@ -452,6 +440,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=18"></script>
+<script type="module" src="assets/trust.js?v=19"></script>
 </body>
 </html>
