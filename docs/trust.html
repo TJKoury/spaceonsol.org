@@ -60,8 +60,24 @@
       </div>
       <div class="graph-legend" id="legend"></div>
       <div class="graph-tools">
-        <button id="importChainBtn" class="mini" disabled>Import my $SPACE transfers</button>
         <button id="fitBtn" class="mini">Re-center</button>
+      </div>
+      <div class="graph-io">
+        <button id="gExportBtn" title="Export your trust records as an SDS archive">⇩ export</button>
+        <button id="gImportBtn" title="Import an SDS trust archive">⇧ import</button>
+        <input type="file" id="gImportFile" accept="application/json" hidden>
+      </div>
+      <div id="nodePop" class="node-pop" hidden>
+        <div class="np-head"><code id="npAddr" title=""></code><button id="npClose" class="np-x" aria-label="Close">✕</button></div>
+        <div class="np-body" id="npBody">
+          <label>Trust level<select id="npLevel"></select></label>
+          <label>Note <span class="hint">local only</span><input id="npNote" placeholder="Why you trust this key"></label>
+          <div class="np-btns">
+            <button id="npSave" class="mini strong">Save</button>
+            <button id="npRevoke" class="mini np-danger">Revoke</button>
+          </div>
+        </div>
+        <p class="np-hint" id="npHint" hidden></p>
       </div>
     </div>
     <p class="t-note" id="syncInfo">Not connected.</p>
@@ -269,17 +285,15 @@
 <section id="vault" class="tsec alt">
   <div class="wrap narrow">
     <h2 class="t-h2">Your records</h2>
-    <p class="t-lead">Stored <b>locally in your browser</b> by default. Nothing leaves this page until you back it up.</p>
+    <p class="t-lead">Stored <b>locally in your browser</b> by default. Nothing leaves this page until you back it up.
+      File download and import live on the graph above — this panel is for remote backups.</p>
 
     <div class="vault-bar">
       <div class="vault-count"><b id="recCount">0</b> records</div>
       <div class="vault-btns">
-        <button id="dlBtn" class="mini strong">Download</button>
         <button id="ipfsBtn" class="mini">IPFS</button>
         <button id="s3Btn" class="mini">S3</button>
         <button id="gdBtn" class="mini">Drive</button>
-        <button id="importBtn" class="mini">Import</button>
-        <input type="file" id="importFile" accept="application/json" hidden>
       </div>
     </div>
     <div id="backupOut" class="backup-out"></div>

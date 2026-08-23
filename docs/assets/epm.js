@@ -200,7 +200,7 @@ export async function signEPM(epm, provider, publicKeyBytes) {
   record.KEYS = keys;
 
   const { bytes } = canonicalPreimage(record);
-  const res = await provider.signMessage(bytes, "utf8");
+  const res = await provider.signMessage(bytes);
   const sig = res?.signature || res;
   record.SIGNATURE = toHex(sig instanceof Uint8Array ? sig : new Uint8Array(sig));
   return record;

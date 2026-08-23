@@ -6,6 +6,7 @@ import {
 } from "https://esm.sh/@solana/spl-token@0.4.8";
 import * as SDS from "./sds-store.js";
 import * as EPM from "./epm.js";
+import { listWallets, connectTo } from "./wallet.js";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -116,27 +117,52 @@ async function resolveField(id) {
 }
 
 /* ---------- wallet ---------- */
-const getProv = () => window.solana?.isPhantom ? window.solana
-  : window.solflare?.isSolflare ? window.solflare : window.solana || null;
+// Discovery + connection live in wallet.js (Wallet Standard first, legacy
+// injection second) — that is what makes Jupiter, Backpack etc. show up.
+function pickWallet(list) {
+  return new Promise((resolve) => {
+    const m = document.createElement("div");
+    m.className = "wmodal";
+    m.innerHTML = '<div class="wmodal-box"><h3>Connect a wallet</h3><div class="wlist"></div><button class="mini wmodal-cancel">Cancel</button></div>';
+    const done = (v) => { m.remove(); resolve(v); };
+    const wl = m.querySelector(".wlist");
+    for (const w of list) {
+      const b = document.createElement("button");
+      b.className = "wopt";
+      if (w.icon) { const img = document.createElement("img"); img.src = w.icon; img.alt = ""; b.appendChild(img); }
+      else { const d = document.createElement("span"); d.className = "wopt-dot"; b.appendChild(d); }
+      const nm = document.createElement("b"); nm.textContent = w.name; b.appendChild(nm);
+      b.addEventListener("click", () => done(w));
+      wl.appendChild(b);
+    }
+    m.querySelector(".wmodal-cancel").addEventListener("click", () => done(null));
+    m.addEventListener("click", (e) => { if (e.target === m) done(null); });
+    document.body.appendChild(m);
+  });
+}
 
 $("connectBtn").addEventListener("click", async () => {
   if (wallet) {
     try { await provider.disconnect(); } catch {}
     provider = null; wallet = null; walletPubBytes = null;
     $("wlabel").textContent = "Connect wallet"; $("connectBtn").classList.remove("on");
-    ["assignBtn", "signEpmBtn", "msgSignBtn", "importChainBtn"].forEach((i) => $(i).disabled = true);
+    ["assignBtn", "signEpmBtn", "msgSignBtn"].forEach((i) => $(i).disabled = true);
     $("syncInfo").textContent = "Not connected.";
+    stopChainSync();
+    closeNodePop();
     Graph.setYou(null); redraw();
     return toast("Disconnected");
   }
-  const p = getProv();
-  if (!p) return toast("No Solana wallet found — install Phantom or Solflare", true);
+  const list = await listWallets();
+  if (!list.length) return toast("No Solana wallet found — install Phantom, Solflare, Backpack or Jupiter", true);
+  const entry = list.length === 1 ? list[0] : await pickWallet(list);
+  if (!entry) return;
   try {
-    await p.connect();
-    provider = p; wallet = p.publicKey.toString();
-    walletPubBytes = p.publicKey.toBytes();
+    const w = await connectTo(entry);
+    provider = w; wallet = w.publicKey.toString();
+    walletPubBytes = w.publicKey.toBytes();
     $("wlabel").textContent = short(wallet); $("connectBtn").classList.add("on");
-    ["assignBtn", "signEpmBtn", "msgSignBtn", "importChainBtn"].forEach((i) => $(i).disabled = false);
+    ["assignBtn", "signEpmBtn", "msgSignBtn"].forEach((i) => $(i).disabled = false);
     Graph.setYou(wallet);
     // your own key is Ultimate trust, by definition
     if (!SDS.byStandard("TNR").some((r) => r.NODE_ID === wallet))
@@ -144,6 +170,7 @@ $("connectBtn").addEventListener("click", async () => {
     redraw(); renderRecords();
     toast("Wallet connected");
     refreshMyBond();
+    startChainSync();   // auto-import transfers + watch for new ones
   } catch { toast("Connection rejected", true); }
 });
 
@@ -184,7 +211,10 @@ $("assignBtn").addEventListener("click", async () => {
     tx.feePayer = provider.publicKey;
     tx.recentBlockhash = (await c.getLatestBlockhash()).blockhash;
     const res = await provider.signAndSendTransaction(tx);
-    txSig = res?.signature || res;
+    // some wallets only sign; broadcast on their behalf
+    txSig = res.signedTransaction
+      ? await c.sendRawTransaction(res.signedTransaction)
+      : (res.signature || res);
   } catch (e) { return toast("Transfer failed — no trust established: " + (e.message || e), true); }
 
   // sign the trust edge itself with the wallet key
@@ -196,8 +226,8 @@ $("assignBtn").addEventListener("click", async () => {
   try {
     const payload = new TextEncoder().encode(
       `sdn-tre/1\n${tre.EDGE_ID}\n${tre.WEIGHT}\n${tre.UPDATED_AT}\n`);
-    const sr = await provider.signMessage(payload, "utf8");
-    tre.PROVIDER_SIGNATURE = EPM.toHex(sr?.signature || sr);
+    const sr = await provider.signMessage(payload);
+    tre.PROVIDER_SIGNATURE = EPM.toHex(sr.signature);
   } catch { /* edge is still valid locally if the user declines */ }
 
   SDS.addRecord(tre);
@@ -228,18 +258,26 @@ function showCycle(cycle) {
     cycle.map(short).join(" → ");
 }
 
-/* ---------- import my on-chain transfers as edges ---------- */
-$("importChainBtn").addEventListener("click", async () => {
-  if (!wallet) return toast("Connect a wallet first", true);
+/* ---------- chain sync: transfers auto-import as edges, kept live ---------- */
+// A change on your $SPACE token account triggers a re-import (websocket
+// subscription), with a polling fallback for RPCs whose websocket is flaky.
+// seenSigs keeps repeat scans cheap: each signature is parsed at most once.
+const seenSigs = new Set();
+let syncSubId = null, syncTimer = null, syncBusy = false;
+
+async function importChainTransfers() {
+  if (!wallet || syncBusy) return 0;
+  syncBusy = true;
   try {
-    $("syncInfo").textContent = "Reading your $SPACE transfers…";
     const c = conn();
     const ata = await getAssociatedTokenAddress(MINT, new PublicKey(wallet));
-    const sigs = await c.getSignaturesForAddress(ata, { limit: 15 });
+    const sigs = await c.getSignaturesForAddress(ata, { limit: 25 });
     let n = 0;
     for (const s of sigs) {
+      if (seenSigs.has(s.signature)) continue;
       const t = await c.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 0 }).catch(() => null);
       if (!t?.meta) continue;
+      seenSigs.add(s.signature);
       const net = new Map();
       const apply = (list, sign) => {
         for (const b of list || []) {
@@ -262,17 +300,41 @@ $("importChainBtn").addEventListener("click", async () => {
       }));
       n++;
     }
-    redraw(); renderRecords();
-    $("syncInfo").textContent = statusLine();
-    toast(n ? `Imported ${n} transfers as Standard-trust edges` : "No outbound transfers found (pool swaps are skipped)");
-  } catch (e) { toast("Import failed: " + (e.message || e), true); }
-});
+    if (n) {
+      redraw(); renderRecords(); refreshMyBond();
+      toast(`Imported ${n} transfer${n === 1 ? "" : "s"} as Standard-trust edges`);
+    }
+    return n;
+  } catch (e) { console.warn("chain sync failed", e); return 0; }
+  finally { syncBusy = false; $("syncInfo").textContent = statusLine(); }
+}
+
+async function startChainSync() {
+  stopChainSync();
+  $("syncInfo").textContent = "Reading your $SPACE transfers…";
+  await importChainTransfers();
+  const c = conn();
+  try {
+    const ata = await getAssociatedTokenAddress(MINT, new PublicKey(wallet));
+    // fires on any balance change of your $SPACE account — in or out
+    syncSubId = c.onAccountChange(ata, () => importChainTransfers(), "confirmed");
+  } catch (e) { console.warn("account subscription unavailable, polling only", e); }
+  syncTimer = setInterval(importChainTransfers, 60_000);
+}
+
+function stopChainSync() {
+  if (syncSubId != null) { try { connection?.removeAccountChangeListener(syncSubId); } catch {} syncSubId = null; }
+  if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  seenSigs.clear();
+  syncBusy = false;
+}
 
 /* ---------- ego graph state ---------- */
 function statusLine() {
   if (!wallet) return "Not connected.";
   const out = SDS.projectEdges().filter((e) => e.TRUSTER_ID === wallet).length;
-  return out ? `${out} key${out === 1 ? "" : "s"} in your web of trust.` : "No trust assigned yet.";
+  const base = out ? `${out} key${out === 1 ? "" : "s"} in your web of trust.` : "No trust assigned yet.";
+  return base + " Watching the chain — new $SPACE transfers import automatically. Click a node to set its level.";
 }
 
 function redraw() {
@@ -329,6 +391,105 @@ function redraw() {
   Graph.refreshEmpty();
 }
 $("fitBtn").addEventListener("click", () => Graph.recenter());
+
+/* ---------- node popover: set level + note by clicking a node ---------- */
+SDS.TRUST_LEVELS.forEach((l) => $("npLevel").add(new Option(`${l.sds} — PGP “${l.pgp}”`, l.sds)));
+let npNodeId = null;
+
+function closeNodePop() { npNodeId = null; $("nodePop").hidden = true; }
+
+function openNodePop(node) {
+  npNodeId = node.id;
+  $("npAddr").textContent = node.you ? "you · " + short(node.id) : short(node.id);
+  $("npAddr").title = node.id;
+  const edge = wallet && !node.you
+    ? SDS.projectEdgesWithTombstones().find((e) => e.EDGE_ID === `${wallet}->${node.id}`)
+    : null;
+  const hint = $("npHint"), body = $("npBody");
+  if (node.you) {
+    body.hidden = true; hint.hidden = false;
+    hint.textContent = "Your own key — Ultimate trust, by definition.";
+  } else if (!wallet) {
+    body.hidden = true; hint.hidden = false;
+    hint.textContent = "Connect your wallet to set trust levels.";
+  } else if (!edge) {
+    body.hidden = true; hint.hidden = false;
+    hint.textContent = "No direct link from you — send $SPACE to this key to establish one.";
+  } else {
+    body.hidden = false;
+    $("npLevel").value = edge._level || "Standard";
+    $("npNote").value = edge._note || "";
+    $("npRevoke").hidden = !!edge.DELETED;
+    hint.hidden = !edge.DELETED;
+    if (edge.DELETED) hint.textContent = "Revoked — saving a level re-instates this edge locally.";
+  }
+  $("nodePop").hidden = false;
+  positionNodePop();
+}
+
+/** Keep the popover pinned to its node while the simulation moves it. */
+function positionNodePop() {
+  if (!npNodeId) return;
+  const n = Graph.getNode(npNodeId);
+  if (!n) return closeNodePop();
+  const pop = $("nodePop"), card = pop.parentElement;
+  const pw = pop.offsetWidth || 240, ph = pop.offsetHeight || 150;
+  let x = n.x + n.r + 12, y = n.y - 18;
+  if (x + pw > card.clientWidth - 8) x = n.x - n.r - 12 - pw;   // flip left
+  x = Math.max(8, Math.min(card.clientWidth - pw - 8, x));
+  y = Math.max(8, Math.min(card.clientHeight - ph - 8, y));
+  pop.style.left = x + "px"; pop.style.top = y + "px";
+}
+requestAnimationFrame(function popFollow() { positionNodePop(); requestAnimationFrame(popFollow); });
+
+$("npClose").addEventListener("click", closeNodePop);
+
+$("npSave").addEventListener("click", () => {
+  if (!wallet || !npNodeId) return;
+  const edgeId = `${wallet}->${npNodeId}`;
+  // preserve the bond details from the last live version of this edge
+  const prior = SDS.loadAll().filter((r) => r.STANDARD === "TRE" && r.EDGE_ID === edgeId && !r.DELETED).slice(-1)[0];
+  SDS.addRecord(SDS.makeTRE({
+    trusterId: wallet, trusteeId: npNodeId,
+    level: $("npLevel").value, note: $("npNote").value.trim(),
+    amount: prior?._amount ?? null, signature: prior?._txSignature ?? null,
+  }));
+  redraw(); renderRecords();
+  toast(`${$("npLevel").value} trust set for ${short(npNodeId)}`);
+  closeNodePop();
+});
+
+$("npRevoke").addEventListener("click", () => {
+  if (!wallet || !npNodeId) return;
+  SDS.addRecord(SDS.makeTombstone({
+    trusterId: wallet, trusteeId: npNodeId,
+    reason: "NO_LONGER_TRUSTED", note: $("npNote").value.trim(),
+  }));
+  redraw(); renderRecords();
+  toast(`Trust revoked for ${short(npNodeId)}`);
+  closeNodePop();
+});
+
+/* ---------- trust matrix import / export, on the graph ---------- */
+$("gExportBtn").addEventListener("click", () => {
+  const all = SDS.loadAll();
+  if (!all.length) return toast("No records to export yet", true);
+  const url = URL.createObjectURL(SDS.toBlob(all));
+  const a = document.createElement("a");
+  a.href = url; a.download = SDS.suggestedFilename(); a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${all.length} records`);
+});
+$("gImportBtn").addEventListener("click", () => $("gImportFile").click());
+$("gImportFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const r = SDS.importArchive(JSON.parse(await f.text()));
+    rules = SDS.byStandard("TRP").slice(-1)[0]?.rules || rules;
+    renderRecords(); renderRules(); redraw();
+    toast(`Imported ${r.added} records (${r.total} total)`);
+  } catch (err) { toast("Import failed: " + err.message, true); }
+  e.target.value = "";
+});
 
 /* ---------- EPM identity ---------- */
 function readEpmForm() {
@@ -454,8 +615,8 @@ $("msgSignBtn").addEventListener("click", async () => {
   if (!text) return toast("Write a message first", true);
   try {
     const payload = new TextEncoder().encode(`${MSG_TAG}\n${text}`);
-    const sr = await provider.signMessage(payload, "utf8");
-    const sig = sr?.signature || sr;
+    const sr = await provider.signMessage(payload);
+    const sig = sr.signature;
     const b64u = EPM.b64(sig instanceof Uint8Array ? sig : new Uint8Array(sig))
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const block = `${text}\n\n— ${MSG_TAG} ${wallet} ${b64u}`;
@@ -615,13 +776,6 @@ function renderRecords() {
 const out = (h) => ($("backupOut").innerHTML = h);
 const need = () => { const a = SDS.loadAll(); if (!a.length) { toast("No records to back up", true); return null; } return a; };
 
-$("dlBtn").addEventListener("click", () => {
-  const all = need(); if (!all) return;
-  const url = URL.createObjectURL(SDS.toBlob(all));
-  const a = document.createElement("a");
-  a.href = url; a.download = SDS.suggestedFilename(); a.click(); URL.revokeObjectURL(url);
-  out(`Downloaded ${all.length} records ✓`);
-});
 $("ipfsBtn").addEventListener("click", async () => {
   const all = need(); if (!all) return;
   const api = $("ipfsApi").value.trim(), token = $("ipfsToken").value.trim();
@@ -680,17 +834,6 @@ $("gdBtn").addEventListener("click", () => {
     },
   }).requestAccessToken();
 });
-$("importBtn").addEventListener("click", () => $("importFile").click());
-$("importFile").addEventListener("change", async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const r = SDS.importArchive(JSON.parse(await f.text()));
-    rules = SDS.byStandard("TRP").slice(-1)[0]?.rules || rules;
-    renderRecords(); renderRules(); redraw();
-    out(`Imported ${r.added} records (${r.total} total) ✓`);
-  } catch (err) { out("Import failed: " + err.message); }
-  e.target.value = "";
-});
 $("wipeBtn").addEventListener("click", () => {
   SDS.clearAll(); rules = []; renderRecords(); renderRules(); redraw(); toast("Local records cleared");
 });
@@ -707,9 +850,11 @@ const Graph = (() => {
   }
   new ResizeObserver(resize).observe(canvas);
 
+  const posCache = new Map();   // id -> {x,y} so redraws don't scramble the layout
   const addNode = (id, o = {}) => {
     if (nodes.has(id)) { if (o.you) nodes.get(id).you = true; if (o.level) nodes.get(id).level = o.level; return nodes.get(id); }
-    const n = { id, x: W/2 + (Math.random()-.5)*200, y: H/2 + (Math.random()-.5)*200,
+    const p = posCache.get(id);
+    const n = { id, x: p ? p.x : W/2 + (Math.random()-.5)*200, y: p ? p.y : H/2 + (Math.random()-.5)*200,
       vx: 0, vy: 0, r: o.you ? 18 : 11, you: !!o.you, level: o.level || "Standard" };
     nodes.set(id, n); return n;
   };
@@ -770,28 +915,37 @@ const Graph = (() => {
     }
     ctx.textAlign = "start";
   }
-  let drag = null;
+  let drag = null, downAt = null, moved = false, clickCb = null;
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX-r.left, y: e.clientY-r.top }; };
   const hit = (p) => [...nodes.values()].find((n) => (p.x-n.x)**2 + (p.y-n.y)**2 < (n.r+6)**2);
-  canvas.addEventListener("mousedown", (e) => (drag = hit(pos(e))));
+  canvas.addEventListener("mousedown", (e) => { const p = pos(e); drag = hit(p); downAt = p; moved = false; });
   addEventListener("mousemove", (e) => {
-    if (drag) { const p = pos(e); drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; return; }
-    const n = hit(pos(e)); canvas.title = n ? `${n.id}\n${n.you ? "your key" : n.level + " trust"}` : "";
+    const p = pos(e);
+    if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 4) moved = true;
+    if (drag && moved) { drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; return; }
+    const n = hit(p); canvas.style.cursor = n ? "pointer" : "";
+    canvas.title = n ? `${n.id}\n${n.you ? "your key" : n.level + " trust"} — click to edit` : "";
   });
-  addEventListener("mouseup", () => (drag = null));
-  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); drag = hit({ x: t.clientX-r.left, y: t.clientY-r.top }); }, { passive: true });
-  canvas.addEventListener("touchmove", (e) => { if (!drag) return; const t = e.touches[0], r = canvas.getBoundingClientRect(); drag.x = t.clientX-r.left; drag.y = t.clientY-r.top; drag.vx = drag.vy = 0; }, { passive: true });
-  canvas.addEventListener("touchend", () => (drag = null));
+  addEventListener("mouseup", (e) => {
+    if (downAt && !moved && e.target === canvas && clickCb) clickCb(drag || null);
+    drag = null; downAt = null; moved = false;
+  });
+  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); const p = { x: t.clientX-r.left, y: t.clientY-r.top }; drag = hit(p); downAt = p; moved = false; }, { passive: true });
+  canvas.addEventListener("touchmove", (e) => { if (!drag) return; const t = e.touches[0], r = canvas.getBoundingClientRect(); const p = { x: t.clientX-r.left, y: t.clientY-r.top }; if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 6) moved = true; if (moved) { drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; } }, { passive: true });
+  canvas.addEventListener("touchend", () => { if (downAt && !moved && clickCb) clickCb(drag || null); drag = null; downAt = null; moved = false; });
   (function loop() { step(); draw(); requestAnimationFrame(loop); })();
   resize();
   return {
     addNode, addEdge,
     setYou: (a) => { you = a; },
-    reset: () => { nodes.clear(); edges.clear(); },
-    recenter: () => { for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
+    getNode: (id) => nodes.get(id) || null,
+    onNodeClick: (fn) => { clickCb = fn; },
+    reset: () => { for (const n of nodes.values()) posCache.set(n.id, { x: n.x, y: n.y }); nodes.clear(); edges.clear(); },
+    recenter: () => { posCache.clear(); for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
     refreshEmpty: () => ($("graphEmpty").style.display = nodes.size ? "none" : "flex"),
   };
 })();
+Graph.onNodeClick((node) => { node ? openNodePop(node) : closeNodePop(); });
 
 /* ---------- market + your own bond ---------- */
 const priceOf = (mint) => fetch("https://api.dexscreener.com/latest/dex/tokens/" + mint)
