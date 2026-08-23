@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=7";
-import * as EPM from "./epm.js?v=7";
-import { listWallets, connectTo } from "./wallet.js?v=7";
+import * as SDS from "./sds-store.js?v=8";
+import * as EPM from "./epm.js?v=8";
+import { listWallets, connectTo } from "./wallet.js?v=8";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -100,6 +100,11 @@ const snsCache = new Map();
   $("tutInfoBtn").addEventListener("click", () => {
     $("tut").hidden = !$("tut").hidden;
     $("tutInfoBtn").classList.toggle("on", !$("tut").hidden);
+  });
+  $("tutCloseBtn").addEventListener("click", () => {
+    $("tut").hidden = true;
+    $("tutInfoBtn").hidden = false;     // leave the info toggle behind
+    $("tutInfoBtn").classList.remove("on");
   });
   const n = track.children.length;
   let i = 0, timer = null;

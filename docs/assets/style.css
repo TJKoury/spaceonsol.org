@@ -357,8 +357,12 @@ a.nm-sub[href]:hover{color:var(--txt);text-decoration:underline}
 .tut-info:hover,.tut-info.on{background:rgba(70,224,200,.18);border-color:rgba(70,224,200,.6)}
 
 /* tutorial carousel */
-.tut{max-width:640px;margin:0 auto 30px;border-radius:14px;overflow:hidden;
+.tut{position:relative;max-width:640px;margin:0 auto 30px;border-radius:14px;overflow:hidden;
   background:rgba(255,255,255,.025);border:1px solid var(--glass-line);box-shadow:var(--sheen)}
+.tut-x{position:absolute;top:10px;right:10px;z-index:5;width:28px;height:28px;display:flex;
+  align-items:center;justify-content:center;background:none;border:1px solid transparent;border-radius:7px;
+  color:var(--muted);cursor:pointer;font-size:.85rem;line-height:1;transition:.16s}
+.tut-x:hover{color:var(--txt);background:rgba(255,255,255,.07);border-color:var(--glass-line)}
 .tut-track{display:flex;transition:transform .45s cubic-bezier(.4,0,.2,1)}
 .tut-slide{flex:0 0 100%;display:flex;align-items:center;gap:18px;padding:20px 26px}
 .tut-slide svg{width:190px;flex:none}
