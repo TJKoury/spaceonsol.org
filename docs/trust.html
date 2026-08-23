@@ -6,7 +6,7 @@
 <title>Your Trust Graph — $SPACE</title>
 <meta name="description" content="Your own web of trust on Solana: explicit PGP-style trust levels, signed EPM identity, vCard and QR export, and signed messages.">
 <link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
-<link rel="stylesheet" href="assets/style.css?v=6">
+<link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body>
 
@@ -25,6 +25,7 @@
     <a href="#message">Sign</a>
     <a href="#rules">Rules</a>
     <a href="#vault">Backup</a>
+    <a href="#graph-sec" id="navArchived" class="nav-archived" hidden>archived (<span id="navArchivedCount">0</span>)</a>
     <button id="connectBtn" class="wbtn"><span class="wdot"></span><span id="wlabel">Connect wallet</span></button>
   </div>
   <button id="menu-btn" aria-label="Menu" onclick="document.getElementById('nav').classList.toggle('open')">☰</button>
@@ -34,6 +35,7 @@
 <section id="graph-sec" class="tsec tsec-first">
   <div class="wrap">
     <h1 class="t-h1">Trust Graph</h1>
+    <div class="tut-info-row"><button id="tutInfoBtn" class="tut-info" title="How it works" hidden>i</button></div>
 
     <div class="tut" id="tut">
       <div class="tut-track" id="tutTrack">
@@ -106,7 +108,7 @@
       </div>
       <div class="graph-legend" id="legend"></div>
       <div class="graph-tools">
-        <button id="hiddenBtn" class="mini" hidden>hidden <b id="hiddenCount">0</b></button>
+        <button id="hiddenBtn" class="mini" hidden>archived <b id="hiddenCount">0</b></button>
         <button id="fitBtn" class="mini">Re-center</button>
       </div>
       <div class="graph-io">
@@ -370,7 +372,9 @@
 <div id="nodePop" class="wmodal" hidden>
   <div class="wmodal-box node-box">
     <button id="npClose" class="nm-x" aria-label="Close">✕</button>
-    <button id="npHide" class="nm-x nm-hide" title="Hide this node from the graph">⊘</button>
+    <button id="npHide" class="nm-x nm-hide" title="Archive this node — hides it from the graph">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><line x1="10" y1="13.5" x2="14" y2="13.5"/></svg>
+    </button>
     <div class="nm-head">
       <a id="npName" class="nm-name" target="_blank" rel="noopener"></a>
       <a id="npSub" class="nm-sub" target="_blank" rel="noopener"></a>
@@ -413,11 +417,11 @@
 <!-- hidden nodes modal -->
 <div id="hiddenModal" class="wmodal" hidden>
   <div class="wmodal-box">
-    <h3>Hidden nodes</h3>
+    <h3>Archived nodes</h3>
     <input id="hiddenFilter" class="hidden-filter" placeholder="Filter by address or .sol name">
     <div id="hiddenList" class="hidden-list"></div>
     <div class="np-row2">
-      <button class="mini strong" id="hiddenShowAllBtn">Show all</button>
+      <button class="mini strong" id="hiddenShowAllBtn">Restore all</button>
       <button class="mini wmodal-cancel" id="hiddenCloseBtn">Close</button>
     </div>
   </div>
@@ -425,6 +429,6 @@
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=6"></script>
+<script type="module" src="assets/trust.js?v=7"></script>
 </body>
 </html>

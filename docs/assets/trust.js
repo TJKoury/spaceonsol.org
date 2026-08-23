@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=6";
-import * as EPM from "./epm.js?v=6";
-import { listWallets, connectTo } from "./wallet.js?v=6";
+import * as SDS from "./sds-store.js?v=7";
+import * as EPM from "./epm.js?v=7";
+import { listWallets, connectTo } from "./wallet.js?v=7";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -86,10 +86,21 @@ $("legend").innerHTML =
 /* ---------- address / .sol name resolution ---------- */
 const snsCache = new Map();
 
-/* ---------- tutorial carousel ---------- */
+/* ---------- tutorial carousel — full-size on first visit only ---------- */
 (() => {
   const track = $("tutTrack"), dots = $("tutDots");
   if (!track) return;
+  const TUT_KEY = "sdn.trust.tutSeen.v1";
+  if (localStorage.getItem(TUT_KEY)) {
+    $("tut").hidden = true;
+    $("tutInfoBtn").hidden = false;
+  } else {
+    localStorage.setItem(TUT_KEY, "1");
+  }
+  $("tutInfoBtn").addEventListener("click", () => {
+    $("tut").hidden = !$("tut").hidden;
+    $("tutInfoBtn").classList.toggle("on", !$("tut").hidden);
+  });
   const n = track.children.length;
   let i = 0, timer = null;
   for (let k = 0; k < n; k++) {
@@ -112,14 +123,15 @@ const snsCache = new Map();
   go(0); restart();
 })();
 
-/* ---------- hidden nodes ---------- */
+/* ---------- archived nodes ---------- */
 const HIDDEN_KEY = "sdn.trust.hidden.v1";
 let hiddenNodes = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"));
 function saveHidden() {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenNodes]));
-  const btn = $("hiddenBtn");
-  btn.hidden = !hiddenNodes.size;
+  $("hiddenBtn").hidden = !hiddenNodes.size;
   $("hiddenCount").textContent = hiddenNodes.size;
+  $("navArchived").hidden = !hiddenNodes.size;         // header link appears when >0
+  $("navArchivedCount").textContent = hiddenNodes.size;
 }
 
 /** Plain-text USD for the canvas (no HTML subscripts). */
@@ -659,7 +671,7 @@ $("npHide").addEventListener("click", () => {
   if (!npNodeId) return;
   hiddenNodes.add(npNodeId);
   saveHidden();
-  toast(`${short(npNodeId)} hidden — reopen it from the "hidden" menu`);
+  toast(`${short(npNodeId)} archived — restore it from the "archived" menu`);
   closeNodePop();
   redraw();
 });
@@ -745,15 +757,17 @@ function renderHiddenList() {
     const nm = SNS_NAMES.get(a);
     return `<div class="hidden-row">
       <div class="hidden-id"><b>${nm || short(a)}</b><small title="${a}">${nm ? short(a) : a.slice(0, 20) + "…"}</small></div>
-      <button class="mini strong" data-show="${a}">show</button></div>`;
-  }).join("") : `<p class="rec-empty">${hiddenNodes.size ? "No matches." : "Nothing hidden."}</p>`;
+      <button class="mini strong" data-show="${a}">restore</button></div>`;
+  }).join("") : `<p class="rec-empty">${hiddenNodes.size ? "No matches." : "Nothing archived."}</p>`;
   $("hiddenList").querySelectorAll("[data-show]").forEach((b) =>
     b.addEventListener("click", () => {
       hiddenNodes.delete(b.dataset.show);
       saveHidden(); renderHiddenList(); redraw();
     }));
 }
-$("hiddenBtn").addEventListener("click", () => { $("hiddenFilter").value = ""; renderHiddenList(); $("hiddenModal").hidden = false; });
+function openArchivedModal() { $("hiddenFilter").value = ""; renderHiddenList(); $("hiddenModal").hidden = false; }
+$("hiddenBtn").addEventListener("click", openArchivedModal);
+$("navArchived").addEventListener("click", (e) => { e.preventDefault(); openArchivedModal(); });
 $("hiddenFilter").addEventListener("input", renderHiddenList);
 $("hiddenShowAllBtn").addEventListener("click", () => { hiddenNodes.clear(); saveHidden(); renderHiddenList(); redraw(); });
 $("hiddenCloseBtn").addEventListener("click", () => ($("hiddenModal").hidden = true));
