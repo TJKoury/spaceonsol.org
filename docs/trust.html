@@ -9,7 +9,7 @@
 <script>(function(){var t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t;
 window.__toggleTheme=function(){var d=document.documentElement,n=d.dataset.theme==="light"?"dark":"light";
 d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
-<link rel="stylesheet" href="assets/style.css?v=14">
+<link rel="stylesheet" href="assets/style.css?v=15">
 </head>
 <body class="app">
 
@@ -179,6 +179,7 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
             <th data-sort="identity" data-i18n="thIdentity">Identity</th>
             <th data-sort="sns" data-i18n="thName">SNS</th>
             <th data-sort="addr" data-i18n="thAddr">Address</th>
+            <th data-sort="conn" data-i18n="thConn">Connection</th>
             <th data-sort="level" data-i18n="thLevel">Level</th>
             <th data-sort="bal" data-i18n="thBal">$SPACE</th>
             <th data-sort="val" data-i18n="thVal">Value</th>
@@ -418,6 +419,12 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       <label><span data-i18n="mX">x.com account</span><input id="npX" placeholder="@handle"></label>
       <a id="npXLink" class="np-xlink" target="_blank" rel="noopener" hidden></a>
     </div>
+    <div id="npConnect" class="np-connect" hidden>
+      <p class="np-hint" id="npConnHint"></p>
+      <label><span>$SPACE to send</span> <span class="hint">max 100 — the bond that establishes the connection</span>
+        <input id="npAmount" type="number" min="0" max="100" step="any" placeholder="100"></label>
+      <button id="npConnectBtn" class="mini strong" data-i18n="estConn">Establish connection</button>
+    </div>
     <p class="np-hint" id="npHint" hidden></p>
   </div>
 </div>
@@ -451,6 +458,6 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=14"></script>
+<script type="module" src="assets/trust.js?v=15"></script>
 </body>
 </html>

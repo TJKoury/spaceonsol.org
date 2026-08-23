@@ -908,3 +908,13 @@ body.app .tsec:not(#graph-sec),body.app .footer{display:none}
   body.app .graph-tools{position:absolute;top:10px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);
     justify-content:center}
 }
+
+
+/* connection states */
+.nt-conn{font-family:ui-monospace,Menlo,monospace;font-size:.72rem;font-weight:700}
+.c-mut{color:#46e0c8}
+.c-out{color:#6ea8ff}
+.c-req{color:#ffc25c}
+.np-connect label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 12px}
+.np-connect input{width:100%;margin-top:5px;font-size:.9rem;padding:9px 11px}
+.np-connect .mini{width:100%;justify-content:center;padding:9px}

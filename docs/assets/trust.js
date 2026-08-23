@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=14";
-import * as EPM from "./epm.js?v=14";
-import { listWallets, connectTo } from "./wallet.js?v=14";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=14";
+import * as SDS from "./sds-store.js?v=15";
+import * as EPM from "./epm.js?v=15";
+import { listWallets, connectTo } from "./wallet.js?v=15";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=15";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -370,6 +370,29 @@ $("connectBtn").addEventListener("click", async () => {
 });
 
 /* ---------- assign trust (TRE) ---------- */
+/** Send $SPACE and return the tx signature. Throws with a readable reason. */
+async function transferSpace(to, amt) {
+  const c = conn();
+  const toPub = new PublicKey(to);
+  const fromAta = await getAssociatedTokenAddress(MINT, provider.publicKey);
+  const toAta = await getAssociatedTokenAddress(MINT, toPub);
+  const bal = await c.getTokenAccountBalance(fromAta).catch(() => null);
+  if (!bal?.value) throw new Error("This wallet holds no $SPACE");
+  if (Number(bal.value.uiAmount) < amt) throw new Error(`Only ${bal.value.uiAmount} $SPACE available`);
+  const tx = new Transaction();
+  if (!(await c.getAccountInfo(toAta)))
+    tx.add(createAssociatedTokenAccountInstruction(provider.publicKey, toAta, toPub, MINT));
+  tx.add(createTransferInstruction(fromAta, toAta, provider.publicKey,
+    BigInt(Math.round(amt * 10 ** DECIMALS)), [], TOKEN_PROGRAM_ID));
+  tx.feePayer = provider.publicKey;
+  tx.recentBlockhash = (await c.getLatestBlockhash()).blockhash;
+  const res = await provider.signAndSendTransaction(tx);
+  // some wallets only sign; broadcast on their behalf
+  return res.signedTransaction
+    ? await c.sendRawTransaction(res.signedTransaction)
+    : (res.signature || res);
+}
+
 const MAX_SEND = 100;
 
 /** "@handle", "x.com/handle", "https://twitter.com/handle" → "handle" */
@@ -414,27 +437,8 @@ $("assignBtn").addEventListener("click", async () => {
   if (amt > MAX_SEND) return toast(`Maximum bond is ${MAX_SEND} $SPACE`, true);
 
   let txSig = null;
-  try {
-    const c = conn();
-    const toPub = new PublicKey(to);
-    const fromAta = await getAssociatedTokenAddress(MINT, provider.publicKey);
-    const toAta = await getAssociatedTokenAddress(MINT, toPub);
-    const bal = await c.getTokenAccountBalance(fromAta).catch(() => null);
-    if (!bal?.value) return toast("This wallet holds no $SPACE", true);
-    if (Number(bal.value.uiAmount) < amt) return toast(`Only ${bal.value.uiAmount} $SPACE available`, true);
-    const tx = new Transaction();
-    if (!(await c.getAccountInfo(toAta)))
-      tx.add(createAssociatedTokenAccountInstruction(provider.publicKey, toAta, toPub, MINT));
-    tx.add(createTransferInstruction(fromAta, toAta, provider.publicKey,
-      BigInt(Math.round(amt * 10 ** DECIMALS)), [], TOKEN_PROGRAM_ID));
-    tx.feePayer = provider.publicKey;
-    tx.recentBlockhash = (await c.getLatestBlockhash()).blockhash;
-    const res = await provider.signAndSendTransaction(tx);
-    // some wallets only sign; broadcast on their behalf
-    txSig = res.signedTransaction
-      ? await c.sendRawTransaction(res.signedTransaction)
-      : (res.signature || res);
-  } catch (e) { return toast("Transfer failed — no trust established: " + (e.message || e), true); }
+  try { txSig = await transferSpace(to, amt); }
+  catch (e) { return toast("Transfer failed — no trust established: " + (e.message || e), true); }
 
   // sign the trust edge itself with the wallet key
   const tre = SDS.makeTRE({
@@ -484,6 +488,9 @@ function showCycle(cycle) {
 // subscription), with a polling fallback for RPCs whose websocket is flaky.
 // seenSigs keeps repeat scans cheap: each signature is parsed at most once.
 const seenSigs = new Set();
+/** sender -> { amount, signature, time } for $SPACE sent TO you. If you have
+ *  no outbound edge back, it's a pending connection request. */
+const INBOUND = new Map();
 let syncSubId = null, syncTimer = null, syncBusy = false;
 
 async function importChainTransfers() {
@@ -508,6 +515,20 @@ async function importChainTransfers() {
       };
       apply(t.meta.preTokenBalances, -1); apply(t.meta.postTokenBalances, +1);
       const mine = net.get(wallet) || 0;
+      if (mine > 1e-9) {
+        // net incoming: someone sent you $SPACE — a connection request
+        const sender = [...net.entries()]
+          .filter(([o, d]) => o !== wallet && d < -1e-9).sort((a, b) => a[1] - b[1])[0];
+        if (sender && sender[0] !== POOL) {
+          const prev = INBOUND.get(sender[0]);
+          INBOUND.set(sender[0], {
+            amount: (prev?.amount || 0) + mine,
+            signature: s.signature, time: s.blockTime || 0,
+          });
+          n++;   // counts as a change so the graph refreshes
+        }
+        continue;
+      }
       if (mine >= -1e-9) continue;              // only outbound = things you vouched for
       const cp = [...net.entries()]
         .filter(([o, d]) => o !== wallet && d > 1e-9).sort((a, b) => b[1] - a[1])[0];
@@ -551,6 +572,7 @@ function stopChainSync() {
   if (syncSubId != null) { try { connection?.removeAccountChangeListener(syncSubId); } catch {} syncSubId = null; }
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
   seenSigs.clear();
+  INBOUND.clear();
   syncBusy = false;
 }
 
@@ -600,6 +622,17 @@ function redraw() {
       Graph.addNode(e.TRUSTEE_ID, { level: "Untrusted" });
       Graph.addEdge(e.TRUSTER_ID, e.TRUSTEE_ID, 0, "Untrusted", true, 0);
     }
+    // incoming $SPACE: mutual if you sent back, otherwise a connection request
+    const myOut = new Set(live.filter((e) => e.TRUSTER_ID === wallet).map((e) => e.TRUSTEE_ID));
+    for (const [sender] of INBOUND) {
+      if (sender === wallet || hiddenNodes.has(sender)) continue;
+      if (myOut.has(sender)) {
+        Graph.setEdgeKind(wallet, sender, "mutual");   // transfers both ways
+      } else {
+        Graph.addNode(sender, { level: "Standard", request: true });
+        Graph.addEdge(sender, wallet, .4, "Standard", false, 0, "request");
+      }
+    }
     const mine = live.filter((e) => e.TRUSTER_ID === wallet);
     // "you trust" means actual trust — Untrusted (PGP Never) edges don't count
     $("n-out").textContent = mine.filter((e) => e._level !== "Untrusted").length;
@@ -643,6 +676,7 @@ function openNodePop(node) {
   npNodeId = node.id;
   npSavedId = null;
   $("npSaved").hidden = true;
+  $("npConnect").hidden = true;
 
   // SNS name is the headline when it exists; the address is always a link out.
   const nm = SNS_NAMES.get(node.id);
@@ -677,8 +711,12 @@ function openNodePop(node) {
     body.hidden = true; hint.hidden = false;
     hint.textContent = "Connect your wallet to set trust levels.";
   } else if (!edge) {
-    body.hidden = true; hint.hidden = false;
-    hint.textContent = "No direct link from you — send $SPACE to this key to establish one.";
+    body.hidden = true; hint.hidden = true;
+    const req = INBOUND.get(node.id);
+    $("npConnect").hidden = false;
+    $("npConnHint").textContent = req
+      ? `Connection request — this key sent you ${fmtC(req.amount)} $SPACE. Send $SPACE back to establish the connection.`
+      : "No direct link from you — send $SPACE to establish a connection.";
   } else {
     body.hidden = false;
     $("npLevel").value = edge._level || "Standard";
@@ -693,6 +731,27 @@ function openNodePop(node) {
 }
 
 $("npClose").addEventListener("click", closeNodePop);
+
+$("npConnectBtn").addEventListener("click", async () => {
+  if (!wallet || !npNodeId) return;
+  const to = npNodeId;
+  const amt = parseFloat($("npAmount").value);
+  if (!(amt > 0)) return toast("Enter an amount — sending $SPACE is what establishes the connection", true);
+  if (amt > MAX_SEND) return toast(`Maximum bond is ${MAX_SEND} $SPACE`, true);
+  const cycle = SDS.wouldCreateCycle(wallet, to);
+  if (cycle) return toast("That edge would create a cycle — TRE requires an acyclic graph", true);
+  let txSig = null;
+  try { txSig = await transferSpace(to, amt); }
+  catch (e) { return toast("Transfer failed — no connection established: " + (e.message || e), true); }
+  SDS.addRecord(SDS.makeTRE({
+    trusterId: wallet, trusteeId: to, level: "Standard",
+    note: "connection established", signature: txSig, amount: amt,
+  }));
+  $("npAmount").value = "";
+  closeNodePop();
+  redraw(); renderRecords(); refreshMyBond();
+  toast(`Sent ${amt} $SPACE — connection established with ${short(to)}`);
+});
 $("nodePop").addEventListener("click", (e) => { if (e.target === $("nodePop")) closeNodePop(); });
 $("npHide").addEventListener("click", () => {
   if (!npNodeId) return;
@@ -878,6 +937,7 @@ function listRows() {
       identity: IDENTITIES.get(n.id)?.name || "",
       sns: SNS_NAMES.get(n.id) || "",
       addr: n.id,
+      conn: n.you ? "" : (edge && INBOUND.has(n.id)) ? "mutual" : edge ? "outgoing" : INBOUND.has(n.id) ? "request" : "",
       level: n.you ? "Admin" : (edge?._level || n.level || ""),
       bal: SPACE_BAL.get(n.id) ?? null,
       val: walletValueUsd(n.id),
@@ -890,7 +950,7 @@ function renderList() {
   if ($("listView").hidden) return;
   const q = ($("listSearch").value || "").toLowerCase().trim();
   let rows = listRows().filter((r) => !q ||
-    [r.identity, r.sns, r.addr, r.level, r.tag].some((v) => String(v).toLowerCase().includes(q)));
+    [r.identity, r.sns, r.addr, r.level, r.tag, r.conn].some((v) => String(v).toLowerCase().includes(q)));
   const { key, dir } = listSort;
   rows.sort((a, b) => {
     const av = a[key], bv = b[key];
@@ -905,12 +965,15 @@ function renderList() {
       <td class="nt-id">${r.identity ? r.identity + (IDENTITIES.get(r.id)?.ok ? " ✓" : "") : "—"}</td>
       <td class="nt-name">${r.sns || "—"}</td>
       <td class="nt-addr" title="${r.addr}">${r.you ? "you · " : ""}${short(r.addr)}</td>
+      <td>${r.conn === "mutual" ? '<span class="nt-conn c-mut">⇄ mutual</span>'
+        : r.conn === "outgoing" ? '<span class="nt-conn c-out">→ outgoing</span>'
+        : r.conn === "request" ? '<span class="nt-conn c-req">⇠ request</span>' : "—"}</td>
       <td><span class="nt-lvl"><i style="background:${levelColor(r.level)}"></i>${r.level || "—"}</span></td>
       <td>${r.bal == null ? "…" : fmtC(r.bal)}</td>
       <td>${r.val == null ? "…" : usdPlain(r.val)}</td>
       <td class="nt-tag">${r.tag ? r.tag.toUpperCase() : ""}</td>
     </tr>`).join("")
-    : `<tr><td colspan="7" class="nt-empty">${i18t(LANG, "listEmpty")}</td></tr>`;
+    : `<tr><td colspan="8" class="nt-empty">${i18t(LANG, "listEmpty")}</td></tr>`;
   $("listRows").querySelectorAll("[data-node]").forEach((tr) =>
     tr.addEventListener("click", () => openNodePop({ id: tr.dataset.node, you: tr.dataset.node === wallet })));
 }
@@ -1293,18 +1356,22 @@ const Graph = (() => {
 
   const posCache = new Map();   // id -> {x,y} so redraws don't scramble the layout
   const addNode = (id, o = {}) => {
-    if (nodes.has(id)) { if (o.you) nodes.get(id).you = true; if (o.level) nodes.get(id).level = o.level; return nodes.get(id); }
+    if (nodes.has(id)) { const ex = nodes.get(id); if (o.you) ex.you = true; if (o.level) ex.level = o.level; if (o.request) ex.request = true; return ex; }
     const p = posCache.get(id);
     const n = { id, x: p ? p.x : W/2 + (Math.random()-.5)*200, y: p ? p.y : H/2 + (Math.random()-.5)*200,
-      vx: 0, vy: 0, r: o.you ? 33 : 27, you: !!o.you, level: o.level || "Standard" };
+      vx: 0, vy: 0, r: o.you ? 33 : 27, you: !!o.you, request: !!o.request, level: o.level || "Standard" };
     nodes.set(id, n);
     queueSnsLookup(id);
     queueBalLookup(id);
     queueSolLookup(id);
     return n;
   };
-  const addEdge = (from, to, weight, level, revoked, depth) => {
-    edges.set(from + ">" + to, { from, to, weight, level, revoked, depth });
+  const addEdge = (from, to, weight, level, revoked, depth, kind = "out") => {
+    edges.set(from + ">" + to, { from, to, weight, level, revoked, depth, kind });
+  };
+  const setEdgeKind = (from, to, kind) => {
+    const e = edges.get(from + ">" + to);
+    if (e) e.kind = kind;
   };
   function step() {
     const arr = [...nodes.values()];
@@ -1337,18 +1404,23 @@ const Graph = (() => {
     ctx.scale(zoom, zoom);
     for (const e of edges.values()) {
       const a = nodes.get(e.from), b = nodes.get(e.to); if (!a || !b) continue;
-      const col = levelColor(e.level);
+      const col = e.kind === "request" ? "#ffc25c" : levelColor(e.level);
       ctx.save();
       if (e.revoked) { ctx.setLineDash([5, 4]); ctx.strokeStyle = "rgba(255,107,107,.55)"; ctx.lineWidth = 1.4; }
+      else if (e.kind === "request") { ctx.setLineDash([3, 5]); ctx.strokeStyle = "rgba(255,194,92,.7)"; ctx.lineWidth = 1.8; }
       else { ctx.strokeStyle = col + "aa"; ctx.lineWidth = 1 + (e.weight || .5) * 3.6; }
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.restore();
-      const ang = Math.atan2(b.y-a.y, b.x-a.x);
-      const bx = b.x-Math.cos(ang)*(b.r+3), by = b.y-Math.sin(ang)*(b.r+3);
+      const head = (fromN, toN) => {   // arrowhead entering toN
+        const ang = Math.atan2(toN.y-fromN.y, toN.x-fromN.x);
+        const bx = toN.x-Math.cos(ang)*(toN.r+3), by = toN.y-Math.sin(ang)*(toN.r+3);
+        ctx.beginPath(); ctx.moveTo(bx, by);
+        ctx.lineTo(bx-Math.cos(ang-.4)*8, by-Math.sin(ang-.4)*8);
+        ctx.lineTo(bx-Math.cos(ang+.4)*8, by-Math.sin(ang+.4)*8);
+        ctx.closePath(); ctx.fill();
+      };
       ctx.fillStyle = e.revoked ? "rgba(255,107,107,.85)" : col;
-      ctx.beginPath(); ctx.moveTo(bx, by);
-      ctx.lineTo(bx-Math.cos(ang-.4)*8, by-Math.sin(ang-.4)*8);
-      ctx.lineTo(bx-Math.cos(ang+.4)*8, by-Math.sin(ang+.4)*8);
-      ctx.closePath(); ctx.fill();
+      head(a, b);                                   // transfer went from -> to
+      if (e.kind === "mutual") head(b, a);          // …and back
     }
     for (const n of nodes.values()) {
       const col = n.you ? "#46e0c8" : levelColor(n.level);
@@ -1357,6 +1429,10 @@ const Graph = (() => {
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(255,255,255,.2)"; ctx.lineWidth = 1.3;
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.stroke();
+      if (n.request) {
+        ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(255,194,92,.8)"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 5, 0, 7); ctx.stroke(); ctx.restore();
+      }
       // account-type / manual tag badge above the bubble
       const tag = NODE_TAGS.get(n.id) || TYPE_BADGE[ACCT_TYPE.get(n.id)];
       if (tag && !n.you) {
@@ -1460,6 +1536,7 @@ const Graph = (() => {
     addNode, addEdge,
     setYou: (a) => { you = a; },
     getNode: (id) => nodes.get(id) || null,
+    setEdgeKind,
     nodeList: () => [...nodes.values()].map((n) => ({ id: n.id, you: n.you, level: n.level })),
     onNodeClick: (fn) => { clickCb = fn; },
     reset: () => { for (const n of nodes.values()) posCache.set(n.id, { x: n.x, y: n.y }); nodes.clear(); edges.clear(); },
