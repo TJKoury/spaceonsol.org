@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js";
-import * as EPM from "./epm.js";
-import { listWallets, connectTo } from "./wallet.js";
+import * as SDS from "./sds-store.js?v=3";
+import * as EPM from "./epm.js?v=3";
+import { listWallets, connectTo } from "./wallet.js?v=3";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -86,6 +86,30 @@ $("legend").innerHTML =
 /* ---------- address / .sol name resolution ---------- */
 const snsCache = new Map();
 
+/** $SPACE balance per node: address -> uiAmount. Lazy like the SNS lookup;
+ *  drawn inside each bubble as it lands. Missing ATA counts as 0. */
+const SPACE_BAL = new Map();
+const balLookingUp = new Set();
+function queueBalLookup(address) {
+  if (!address || SPACE_BAL.has(address) || balLookingUp.has(address)) return;
+  balLookingUp.add(address);
+  (async () => {
+    let done = false;
+    try {
+      const c = conn();
+      const ata = await getAssociatedTokenAddress(MINT, new PublicKey(address));
+      const bal = await c.getTokenAccountBalance(ata).catch((e) => {
+        if (/could not find account/i.test(e?.message || "")) return null;  // no ATA = holds 0
+        throw e;
+      });
+      SPACE_BAL.set(address, bal ? Number(bal.value.uiAmount || 0) : 0);
+      done = true;
+    } catch (e) { console.warn("balance lookup failed, will retry", address, e); }
+    balLookingUp.delete(address);
+    if (!done) setTimeout(() => queueBalLookup(address), 20_000);
+  })();
+}
+
 /** Reverse lookup: address -> primary .sol name (or null). Filled lazily; the
  *  canvas reads this map every frame, so names appear as lookups land. */
 const SNS_NAMES = new Map();
@@ -94,6 +118,7 @@ function queueSnsLookup(address) {
   if (!address || SNS_NAMES.has(address) || snsLookingUp.has(address)) return;
   snsLookingUp.add(address);
   (async () => {
+    let done = false;
     try {
       const sns = await import("https://esm.sh/@bonfida/spl-name-service@3.0.4");
       const c = conn(), owner = new PublicKey(address);
@@ -109,14 +134,16 @@ function queueSnsLookup(address) {
         const [favKey] = sns.FavouriteDomain.getKeySync(sns.NAME_OFFERS_ID, owner);
         const fav = await sns.FavouriteDomain.retrieve(c, favKey);
         name = await reverseOf(fav.nameAccount);
-      } catch { /* no primary domain set */ }
+      } catch { /* no primary domain set — fall through */ }
       if (!name) {
-        const domains = await sns.getAllDomains(c, owner).catch(() => []);
-        if (domains.length) name = await reverseOf(domains[0]).catch(() => null);
+        const domains = await sns.getAllDomains(c, owner);   // throws on RPC failure → retry
+        if (domains.length) name = await reverseOf(domains[0]);
       }
-      SNS_NAMES.set(address, name ? name + ".sol" : null);
-    } catch { SNS_NAMES.set(address, null); }
-    finally { snsLookingUp.delete(address); }
+      SNS_NAMES.set(address, name ? name + ".sol" : null);   // only cache definitive answers
+      done = true;
+    } catch (e) { console.warn("SNS lookup failed, will retry", address, e); }
+    snsLookingUp.delete(address);
+    if (!done) setTimeout(() => queueSnsLookup(address), 15_000);  // transient RPC failure — retry
   })();
 }
 
@@ -209,6 +236,29 @@ $("connectBtn").addEventListener("click", async () => {
 });
 
 /* ---------- assign trust (TRE) ---------- */
+const MAX_SEND = 100;
+
+/** "@handle", "x.com/handle", "https://twitter.com/handle" → "handle" */
+function cleanXHandle(v) {
+  return (v || "").trim()
+    .replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, "")
+    .replace(/^@/, "").replace(/[/?#].*$/, "").trim();
+}
+
+/** Live readout of exactly what will be sent. */
+function updateSendTotal() {
+  const el = $("sendTotal");
+  const amt = parseFloat($("amount").value);
+  if (!(amt > 0)) { el.hidden = true; return; }
+  el.hidden = false;
+  const over = amt > MAX_SEND;
+  el.classList.toggle("over", over);
+  el.innerHTML = over
+    ? `Total: <b>${amt}</b> $SPACE — over the ${MAX_SEND} $SPACE maximum`
+    : `Total to send: <b>${amt}</b> $SPACE${spacePriceUsd ? ` · ≈ ${usd(amt * spacePriceUsd)}` : ""}`;
+}
+$("amount").addEventListener("input", updateSendTotal);
+
 $("assignBtn").addEventListener("click", async () => {
   let to;
   try { to = await resolveField("toAddr"); }
@@ -227,6 +277,7 @@ $("assignBtn").addEventListener("click", async () => {
 
   // The transfer IS the trust relationship. Without it there is no edge.
   if (!(amt > 0)) return toast("Enter an amount — sending $SPACE is what establishes the trust", true);
+  if (amt > MAX_SEND) return toast(`Maximum bond is ${MAX_SEND} $SPACE`, true);
 
   let txSig = null;
   try {
@@ -254,7 +305,8 @@ $("assignBtn").addEventListener("click", async () => {
   // sign the trust edge itself with the wallet key
   const tre = SDS.makeTRE({
     trusterId: wallet, trusteeId: to, level,
-    note: $("note").value.trim(), signature: txSig, amount: amt || null,
+    note: $("note").value.trim(), xAccount: cleanXHandle($("xAcct").value),
+    signature: txSig, amount: amt || null,
     providerPeerId: wallet,
   });
   try {
@@ -265,7 +317,8 @@ $("assignBtn").addEventListener("click", async () => {
   } catch { /* edge is still valid locally if the user declines */ }
 
   SDS.addRecord(tre);
-  $("toAddr").value = $("amount").value = $("note").value = "";
+  $("toAddr").value = $("amount").value = $("note").value = $("xAcct").value = "";
+  updateSendTotal();
   redraw(); renderRecords();
   toast(`Sent ${amt} $SPACE — ${level} trust established with ${short(to)}`);
 });
@@ -335,6 +388,7 @@ async function importChainTransfers() {
       n++;
     }
     if (n) {
+      SPACE_BAL.clear();          // balances moved — refetch on redraw
       redraw(); renderRecords(); refreshMyBond();
       toast(`Imported ${n} transfer${n === 1 ? "" : "s"} as Standard-trust edges`);
     }
@@ -351,7 +405,10 @@ async function startChainSync() {
   try {
     const ata = await getAssociatedTokenAddress(MINT, new PublicKey(wallet));
     // fires on any balance change of your $SPACE account — in or out
-    syncSubId = c.onAccountChange(ata, () => importChainTransfers(), "confirmed");
+    syncSubId = c.onAccountChange(ata, () => {
+      SPACE_BAL.delete(wallet); queueBalLookup(wallet);
+      importChainTransfers();
+    }, "confirmed");
   } catch (e) { console.warn("account subscription unavailable, polling only", e); }
   syncTimer = setInterval(importChainTransfers, 60_000);
 }
@@ -454,7 +511,8 @@ function openNodePop(node) {
     body.hidden = false;
     $("npLevel").value = edge._level || "Standard";
     $("npNote").value = edge._note || "";
-    $("npRevoke").hidden = !!edge.DELETED;
+    $("npX").value = edge._xAccount ? "@" + edge._xAccount : "";
+    updateNpXLink();
     hint.hidden = !edge.DELETED;
     if (edge.DELETED) hint.textContent = "Revoked — saving a level re-instates this edge locally.";
   }
@@ -479,6 +537,14 @@ requestAnimationFrame(function popFollow() { positionNodePop(); requestAnimation
 
 $("npClose").addEventListener("click", closeNodePop);
 
+function updateNpXLink() {
+  const h = cleanXHandle($("npX").value);
+  const a = $("npXLink");
+  a.hidden = !h;
+  if (h) { a.href = "https://x.com/" + encodeURIComponent(h); a.textContent = "open @" + h + " on X ↗"; }
+}
+$("npX").addEventListener("input", updateNpXLink);
+
 $("npSave").addEventListener("click", () => {
   if (!wallet || !npNodeId) return;
   const edgeId = `${wallet}->${npNodeId}`;
@@ -487,21 +553,11 @@ $("npSave").addEventListener("click", () => {
   SDS.addRecord(SDS.makeTRE({
     trusterId: wallet, trusteeId: npNodeId,
     level: $("npLevel").value, note: $("npNote").value.trim(),
+    xAccount: cleanXHandle($("npX").value),
     amount: prior?._amount ?? null, signature: prior?._txSignature ?? null,
   }));
   redraw(); renderRecords();
   toast(`${$("npLevel").value} trust set for ${short(npNodeId)}`);
-  closeNodePop();
-});
-
-$("npRevoke").addEventListener("click", () => {
-  if (!wallet || !npNodeId) return;
-  SDS.addRecord(SDS.makeTombstone({
-    trusterId: wallet, trusteeId: npNodeId,
-    reason: "NO_LONGER_TRUSTED", note: $("npNote").value.trim(),
-  }));
-  redraw(); renderRecords();
-  toast(`Trust revoked for ${short(npNodeId)}`);
   closeNodePop();
 });
 
@@ -890,9 +946,10 @@ const Graph = (() => {
     if (nodes.has(id)) { if (o.you) nodes.get(id).you = true; if (o.level) nodes.get(id).level = o.level; return nodes.get(id); }
     const p = posCache.get(id);
     const n = { id, x: p ? p.x : W/2 + (Math.random()-.5)*200, y: p ? p.y : H/2 + (Math.random()-.5)*200,
-      vx: 0, vy: 0, r: o.you ? 18 : 11, you: !!o.you, level: o.level || "Standard" };
+      vx: 0, vy: 0, r: o.you ? 27 : 20, you: !!o.you, level: o.level || "Standard" };
     nodes.set(id, n);
     queueSnsLookup(id);
+    queueBalLookup(id);
     return n;
   };
   const addEdge = (from, to, weight, level, revoked, depth) => {
@@ -945,9 +1002,16 @@ const Graph = (() => {
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(255,255,255,.2)"; ctx.lineWidth = 1.3;
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.stroke();
+      // $SPACE held at this key, inside the bubble
+      const bal = SPACE_BAL.get(n.id);
+      ctx.textAlign = "center";
+      if (bal != null) {
+        ctx.fillStyle = "rgba(4,6,10,.92)";
+        ctx.font = "700 " + (n.you ? "11px" : "9px") + " ui-monospace,Menlo,monospace";
+        ctx.fillText(fmtC(bal), n.x, n.y + 3.5);
+      }
       ctx.fillStyle = n.you ? "#e7ecf3" : "#aeb7c9";
       ctx.font = (n.you ? "700 " : "600 ") + "11px system-ui,sans-serif";
-      ctx.textAlign = "center";
       ctx.fillText(n.you ? "you" : short(n.id), n.x, n.y + n.r + 14);
       const nm = SNS_NAMES.get(n.id);
       if (nm) {

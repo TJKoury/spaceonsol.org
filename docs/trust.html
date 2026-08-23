@@ -6,7 +6,7 @@
 <title>Your Trust Graph — $SPACE</title>
 <meta name="description" content="Your own web of trust on Solana: explicit PGP-style trust levels, signed EPM identity, vCard and QR export, and signed messages.">
 <link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
 
@@ -72,9 +72,10 @@
         <div class="np-body" id="npBody">
           <label>Trust level<select id="npLevel"></select></label>
           <label>Note <span class="hint">local only</span><input id="npNote" placeholder="Why you trust this key"></label>
+          <label>X account<input id="npX" placeholder="@handle"></label>
+          <a id="npXLink" class="np-xlink" target="_blank" rel="noopener" hidden></a>
           <div class="np-btns">
             <button id="npSave" class="mini strong">Save</button>
-            <button id="npRevoke" class="mini np-danger">Revoke</button>
           </div>
         </div>
         <p class="np-hint" id="npHint" hidden></p>
@@ -110,10 +111,13 @@
       <label>Trust level<select id="trustLevel"></select></label>
       <div id="levelHelp" class="level-help"></div>
       <div class="row2">
-        <label>$SPACE to send <span class="hint">required — this is the bond</span>
-          <input id="amount" type="number" min="0" step="any" placeholder="1000" required></label>
+        <label>$SPACE to send <span class="hint">required — this is the bond · max 100</span>
+          <input id="amount" type="number" min="0" max="100" step="any" placeholder="100" required></label>
         <label>Note <span class="hint">local only</span><input id="note" placeholder="Why"></label>
       </div>
+      <label>X account <span class="hint">optional — links the key to a public handle</span>
+        <input id="xAcct" placeholder="@handle"></label>
+      <div id="sendTotal" class="send-total" hidden></div>
       <button id="assignBtn" class="btn btn-primary" disabled>Send $SPACE &amp; establish trust</button>
       <p class="t-note">
         The transfer settles on Solana — that part is public and permanent. The level, the note and the rules
@@ -330,6 +334,6 @@
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js"></script>
+<script type="module" src="assets/trust.js?v=3"></script>
 </body>
 </html>

@@ -56,7 +56,7 @@ const envelope = (code) => ({
 });
 
 /* ---------------- TRE — Trust Edge Record ---------------- */
-export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, providerPeerId = null, providerSignature = null, note = "", signature = null, amount = null }) {
+export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, providerPeerId = null, providerSignature = null, note = "", signature = null, amount = null, xAccount = "" }) {
   const lvl = level ? levelBySds(level) : null;
   return {
     ...envelope("TRE"),
@@ -71,6 +71,7 @@ export function makeTRE({ trusterId, trusteeId, weight, level, deleted = false, 
     // local-only context, not part of the wire schema
     _level: lvl ? lvl.sds : levelByWeight(weight ?? 0.5).sds,
     _note: note,
+    _xAccount: xAccount,
     _txSignature: signature,
     _amount: amount,
   };
