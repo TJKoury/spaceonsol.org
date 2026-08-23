@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=13";
-import * as EPM from "./epm.js?v=13";
-import { listWallets, connectTo } from "./wallet.js?v=13";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=13";
+import * as SDS from "./sds-store.js?v=14";
+import * as EPM from "./epm.js?v=14";
+import { listWallets, connectTo } from "./wallet.js?v=14";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=14";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -601,10 +601,11 @@ function redraw() {
       Graph.addEdge(e.TRUSTER_ID, e.TRUSTEE_ID, 0, "Untrusted", true, 0);
     }
     const mine = live.filter((e) => e.TRUSTER_ID === wallet);
-    $("n-out").textContent = mine.length;
+    // "you trust" means actual trust — Untrusted (PGP Never) edges don't count
+    $("n-out").textContent = mine.filter((e) => e._level !== "Untrusted").length;
     $("n-in").textContent = live.filter((e) => e.TRUSTEE_ID === wallet).length;
     $("n-depth").textContent = Math.max(0, seen.size - 1);
-    $("n-revoked").textContent = all.filter((e) => e.DELETED && e.TRUSTER_ID === wallet).length;
+    $("n-archived").textContent = hiddenNodes.size;
 
     // value you have bonded outward across your active trust edges
     const bondedSpace = mine.reduce((a, e) => a + (Number(e._amount) || 0), 0);
@@ -1327,11 +1328,13 @@ const Graph = (() => {
       n.vx *= .85; n.vy *= .85; n.x += n.vx; n.y += n.vy;
     }
   }
-  let camX = 0, camY = 0;   // pan offset — swipe/drag empty space to move the whole graph
+  let camX = 0, camY = 0, zoom = 1;   // pan + pinch/wheel zoom
+  const clampZoom = (z) => Math.max(.35, Math.min(3.5, z));
   function draw() {
     ctx.clearRect(0, 0, W, H);
     ctx.save();
     ctx.translate(camX, camY);
+    ctx.scale(zoom, zoom);
     for (const e of edges.values()) {
       const a = nodes.get(e.from), b = nodes.get(e.to); if (!a || !b) continue;
       const col = levelColor(e.level);
@@ -1391,7 +1394,7 @@ const Graph = (() => {
   }
   let drag = null, downAt = null, moved = false, clickCb = null, lastP = null;
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX-r.left, y: e.clientY-r.top }; };
-  const world = (p) => ({ x: p.x - camX, y: p.y - camY });
+  const world = (p) => ({ x: (p.x - camX) / zoom, y: (p.y - camY) / zoom });
   const hit = (p) => { const w = world(p); return [...nodes.values()].find((n) => (w.x-n.x)**2 + (w.y-n.y)**2 < (n.r+6)**2); };
   const down = (p) => { drag = hit(p); downAt = p; lastP = p; moved = false; };
   const move = (p) => {
@@ -1406,6 +1409,12 @@ const Graph = (() => {
     if (downAt && !moved && isCanvas && clickCb) clickCb(drag || null);
     drag = null; downAt = null; lastP = null; moved = false;
   };
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const p = pos(e), w = world(p);
+    zoom = clampZoom(zoom * Math.exp(-e.deltaY * 0.0016));
+    camX = p.x - w.x * zoom; camY = p.y - w.y * zoom;
+  }, { passive: false });
   canvas.addEventListener("mousedown", (e) => down(pos(e)));
   addEventListener("mousemove", (e) => {
     const p = pos(e);
@@ -1415,9 +1424,36 @@ const Graph = (() => {
     canvas.title = n ? `${n.id}${SNS_NAMES.get(n.id) ? "\n" + SNS_NAMES.get(n.id) : ""}\n${n.you ? "your key" : n.level + " trust"} — click to edit` : "";
   });
   addEventListener("mouseup", (e) => up(e.target === canvas));
-  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); down({ x: t.clientX-r.left, y: t.clientY-r.top }); }, { passive: true });
-  canvas.addEventListener("touchmove", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); move({ x: t.clientX-r.left, y: t.clientY-r.top }); }, { passive: true });
-  canvas.addEventListener("touchend", () => up(true));
+  let pinch = null;
+  const touchPts = (e) => {
+    const r = canvas.getBoundingClientRect();
+    return [...e.touches].map((t) => ({ x: t.clientX - r.left, y: t.clientY - r.top }));
+  };
+  canvas.addEventListener("touchstart", (e) => {
+    const pts = touchPts(e);
+    if (pts.length >= 2) {                       // two fingers = pinch, not drag/click
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      pinch = { d0: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1, z0: zoom, w0: world(mid) };
+      drag = null; downAt = null; moved = true;
+      return;
+    }
+    down(pts[0]);
+  }, { passive: true });
+  canvas.addEventListener("touchmove", (e) => {
+    const pts = touchPts(e);
+    if (pinch && pts.length >= 2) {
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      zoom = clampZoom(pinch.z0 * d / pinch.d0);
+      camX = mid.x - pinch.w0.x * zoom; camY = mid.y - pinch.w0.y * zoom;
+      return;
+    }
+    if (pts.length) move(pts[0]);
+  }, { passive: true });
+  canvas.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) pinch = null;
+    if (e.touches.length === 0) up(true);
+  });
   (function loop() { step(); draw(); requestAnimationFrame(loop); })();
   resize();
   return {
@@ -1427,7 +1463,7 @@ const Graph = (() => {
     nodeList: () => [...nodes.values()].map((n) => ({ id: n.id, you: n.you, level: n.level })),
     onNodeClick: (fn) => { clickCb = fn; },
     reset: () => { for (const n of nodes.values()) posCache.set(n.id, { x: n.x, y: n.y }); nodes.clear(); edges.clear(); },
-    recenter: () => { camX = camY = 0; posCache.clear(); for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
+    recenter: () => { camX = camY = 0; zoom = 1; posCache.clear(); for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
     refreshEmpty: () => ($("graphEmpty").style.display = nodes.size ? "none" : "flex"),
   };
 })();
