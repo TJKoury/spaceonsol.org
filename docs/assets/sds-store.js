@@ -281,6 +281,156 @@ export const toBlob = (records = loadAll()) =>
   new Blob([JSON.stringify(toArchive(records), null, 2)], { type: "application/json" });
 export const suggestedFilename = () => `sdn-trust-records-${new Date().toISOString().slice(0, 10)}.json`;
 
+/* ---------------- FlatBuffer archive ----------------
+   Wire format: a concatenation of size-prefixed FlatBuffers, each with its
+   standard file identifier ($TRE, $TNR, $EPM, $PNM) — readable by any SDS
+   tool. One extension chunk with identifier $LOC carries the local-only
+   context (levels, notes, X handles, ids) so a re-import is lossless.
+   Records with no wire schema (TRP) ride whole inside $LOC.               */
+
+const SDS_JS = "https://esm.sh/spacedatastandards.org@1.193.0/lib/js/";
+const FB_JS = "https://esm.sh/flatbuffers@25.9.23";
+
+const hex2u8 = (h) => { const s = String(h).replace(/^0[xX]/, ""); const o = new Uint8Array(s.length >> 1); for (let i = 0; i < o.length; i++) o[i] = parseInt(s.substr(i * 2, 2), 16); return o; };
+const u82hex = (u) => Array.from(u, (b) => b.toString(16).padStart(2, "0")).join("");
+
+/** Local-only (underscore) props of a record, for the $LOC sidecar. */
+const localsOf = (r) => Object.fromEntries(Object.entries(r).filter(([k]) => k.startsWith("_")));
+
+export async function toFlatBufferArchive(records = loadAll()) {
+  const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
+    [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
+  const EPMlib = await import("./epm.js?v=4");
+
+  const chunks = [], ids = [], stds = [], locals = {}, extra = [];
+  const str = (B, v) => (v ? B.createString(String(v)) : null);
+
+  for (const r of records) {
+    if (r.STANDARD === "TRE") {
+      const B = new fb.Builder(512);
+      const e = str(B, r.EDGE_ID), tr = str(B, r.TRUSTER_ID), te = str(B, r.TRUSTEE_ID), pp = str(B, r.PROVIDER_PEER_ID);
+      const sig = r.PROVIDER_SIGNATURE ? TRE.createProviderSignatureVector(B, hex2u8(r.PROVIDER_SIGNATURE)) : null;
+      TRE.startTRE(B);
+      if (e) TRE.addEdgeId(B, e);
+      TRE.addTrusterId(B, tr); TRE.addTrusteeId(B, te);
+      TRE.addWeight(B, Number(r.WEIGHT) || 0);
+      TRE.addUpdatedAt(B, BigInt(Math.round(r.UPDATED_AT || 0)));
+      TRE.addDeleted(B, !!r.DELETED);
+      if (pp) TRE.addProviderPeerId(B, pp);
+      if (sig) TRE.addProviderSignature(B, sig);
+      TRE.finishSizePrefixedTREBuffer(B, TRE.endTRE(B));
+      chunks.push(B.asUint8Array().slice());
+    } else if (r.STANDARD === "TNR") {
+      const B = new fb.Builder(256);
+      const n = str(B, r.NODE_ID), pp = str(B, r.PROVIDER_PEER_ID);
+      TNR.startTNR(B);
+      if (n) TNR.addNodeId(B, n);
+      TNR.addCreatedAt(B, BigInt(Math.round(r.CREATED_AT || 0)));
+      TNR.addUpdatedAt(B, BigInt(Math.round(r.UPDATED_AT || 0)));
+      TNR.addDeleted(B, !!r.DELETED);
+      if (pp) TNR.addProviderPeerId(B, pp);
+      TNR.finishSizePrefixedTNRBuffer(B, TNR.endTNR(B));
+      chunks.push(B.asUint8Array().slice());
+    } else if (r.STANDARD === "EPM" && r._bytesB64) {
+      chunks.push(EPMlib.unb64(r._bytesB64));          // already a size-prefixed $EPM
+    } else if (r.STANDARD === "PNM") {
+      const B = new fb.Builder(256);
+      const fi = str(B, r.FILE_ID), cid = str(B, r.CID), sg = str(B, r.SIGNATURE), st = str(B, r.SIGNATURE_TYPE);
+      PNM.startPNM(B);
+      if (fi) PNM.addFileId(B, fi);
+      if (cid) PNM.addCid(B, cid);
+      if (sg) PNM.addSignature(B, sg);
+      if (st) PNM.addSignatureType(B, st);
+      PNM.finishSizePrefixedPNMBuffer(B, PNM.endPNM(B));
+      chunks.push(B.asUint8Array().slice());
+    } else { extra.push(r); continue; }               // no wire schema — $LOC carries it whole
+    ids.push(r.id); stds.push(r.STANDARD);
+    locals[r.id] = localsOf(r);
+  }
+
+  // $LOC sidecar, framed like the FB messages: [u32 len][u32 0]["$LOC"][json]
+  const json = new TextEncoder().encode(JSON.stringify(
+    { v: 1, exportedAt: new Date().toISOString(), ids, standards: stds, locals, extra }));
+  const loc = new Uint8Array(4 + 4 + 4 + json.length);
+  new DataView(loc.buffer).setUint32(0, 4 + 4 + json.length, true);
+  loc.set([0x24, 0x4c, 0x4f, 0x43], 8);               // "$LOC"
+  loc.set(json, 12);
+
+  let total = loc.length;
+  for (const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  out.set(loc, off);
+  return out;
+}
+
+export async function importFlatBufferArchive(bytes) {
+  const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
+    [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
+  const EPMlib = await import("./epm.js?v=4");
+
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const msgs = [];
+  let loc = { ids: [], standards: [], locals: {}, extra: [] };
+  for (let off = 0; off + 4 <= bytes.length;) {
+    const len = dv.getUint32(off, true);
+    if (len < 4 || off + 4 + len > bytes.length) throw new Error("Corrupt archive at byte " + off);
+    const msg = bytes.subarray(off, off + 4 + len);
+    const ident = String.fromCharCode(msg[8], msg[9], msg[10], msg[11]);
+    if (ident === "$LOC") loc = JSON.parse(new TextDecoder().decode(msg.subarray(12)));
+    else msgs.push({ ident, msg });
+    off += 4 + len;
+  }
+
+  const records = [];
+  for (let i = 0; i < msgs.length; i++) {
+    const { ident, msg } = msgs[i];
+    const id = loc.ids[i] || (ident.slice(1).toLowerCase() + "_import_" + i + "_" + u82hex(msg.subarray(4, 10)));
+    const extras = loc.locals[loc.ids[i]] || {};
+    const bb = new (fb.ByteBuffer)(msg);
+    if (ident === "$TRE") {
+      const t = TRE.getSizePrefixedRootAsTRE(bb);
+      const weight = t.WEIGHT();
+      records.push({
+        STANDARD: "TRE", schema: STANDARDS.TRE.url, id,
+        EDGE_ID: t.EDGE_ID(), TRUSTER_ID: t.TRUSTER_ID(), TRUSTEE_ID: t.TRUSTEE_ID(),
+        WEIGHT: weight, UPDATED_AT: Number(t.UPDATED_AT()), DELETED: t.DELETED(),
+        PROVIDER_PEER_ID: t.PROVIDER_PEER_ID(),
+        PROVIDER_SIGNATURE: t.providerSignatureLength() ? u82hex(t.providerSignatureArray()) : null,
+        _level: levelByWeight(weight).sds, ...extras,
+      });
+    } else if (ident === "$TNR") {
+      const t = TNR.getSizePrefixedRootAsTNR(bb);
+      records.push({
+        STANDARD: "TNR", schema: STANDARDS.TNR.url, id,
+        NODE_ID: t.NODE_ID(), CREATED_AT: Number(t.CREATED_AT()), UPDATED_AT: Number(t.UPDATED_AT()),
+        DELETED: t.DELETED(), PROVIDER_PEER_ID: t.PROVIDER_PEER_ID(), PROVIDER_SIGNATURE: null,
+        ...extras,
+      });
+    } else if (ident === "$EPM") {
+      const rec = EPMlib.decodeEPM(msg);
+      const cid = await EPMlib.cidV1Raw(msg);
+      records.push({
+        STANDARD: "EPM", schema: STANDARDS.EPM.url, id,
+        ...rec, ...extras, _cid: cid, _bytesB64: EPMlib.b64(msg),
+      });
+    } else if (ident === "$PNM") {
+      const t = PNM.getSizePrefixedRootAsPNM(bb);
+      records.push({
+        STANDARD: "PNM", schema: STANDARDS.PNM.url, id,
+        FILE_ID: t.FILE_ID(), CID: t.CID(), SIGNATURE: t.SIGNATURE(), SIGNATURE_TYPE: t.SIGNATURE_TYPE(),
+        ...extras,
+      });
+    }
+    // unknown identifiers are skipped — forward compatibility
+  }
+  for (const r of loc.extra || []) records.push(r);
+  return importArchive({ records });
+}
+
+export const fbFilename = () => `sdn-trust-records-${new Date().toISOString().slice(0, 10)}.sds`;
+
 export function importArchive(json) {
   const incoming = Array.isArray(json) ? json : json?.records || null;
   if (!incoming) throw new Error("Not an SDS archive — expected a `records` array.");

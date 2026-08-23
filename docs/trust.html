@@ -6,7 +6,7 @@
 <title>Your Trust Graph — $SPACE</title>
 <meta name="description" content="Your own web of trust on Solana: explicit PGP-style trust levels, signed EPM identity, vCard and QR export, and signed messages.">
 <link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
-<link rel="stylesheet" href="assets/style.css?v=3">
+<link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
 
@@ -63,9 +63,10 @@
         <button id="fitBtn" class="mini">Re-center</button>
       </div>
       <div class="graph-io">
-        <button id="gExportBtn" title="Export your trust records as an SDS archive">⇩ export</button>
-        <button id="gImportBtn" title="Import an SDS trust archive">⇧ import</button>
-        <input type="file" id="gImportFile" accept="application/json" hidden>
+        <button id="gExportBtn" title="Export as size-prefixed SDS FlatBuffers (.sds)">⇩ export</button>
+        <button id="gExportJsonBtn" title="Export as a JSON archive" class="io-alt">json</button>
+        <button id="gImportBtn" title="Import an SDS archive (.sds FlatBuffers or JSON)">⇧ import</button>
+        <input type="file" id="gImportFile" accept=".sds,.bin,.json,application/json,application/octet-stream" hidden>
       </div>
       <div id="nodePop" class="node-pop" hidden>
         <div class="np-head"><code id="npAddr" title=""></code><button id="npClose" class="np-x" aria-label="Close">✕</button></div>
@@ -334,6 +335,6 @@
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=3"></script>
+<script type="module" src="assets/trust.js?v=4"></script>
 </body>
 </html>

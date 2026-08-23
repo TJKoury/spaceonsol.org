@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=3";
-import * as EPM from "./epm.js?v=3";
-import { listWallets, connectTo } from "./wallet.js?v=3";
+import * as SDS from "./sds-store.js?v=4";
+import * as EPM from "./epm.js?v=4";
+import { listWallets, connectTo } from "./wallet.js?v=4";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -562,19 +562,36 @@ $("npSave").addEventListener("click", () => {
 });
 
 /* ---------- trust matrix import / export, on the graph ---------- */
-$("gExportBtn").addEventListener("click", () => {
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+$("gExportBtn").addEventListener("click", async () => {
   const all = SDS.loadAll();
   if (!all.length) return toast("No records to export yet", true);
-  const url = URL.createObjectURL(SDS.toBlob(all));
-  const a = document.createElement("a");
-  a.href = url; a.download = SDS.suggestedFilename(); a.click(); URL.revokeObjectURL(url);
-  toast(`Exported ${all.length} records`);
+  try {
+    const bytes = await SDS.toFlatBufferArchive(all);
+    downloadBlob(new Blob([bytes], { type: "application/octet-stream" }), SDS.fbFilename());
+    toast(`Exported ${all.length} records as size-prefixed FlatBuffers`);
+  } catch (e) { toast("Export failed: " + (e.message || e), true); }
+});
+$("gExportJsonBtn").addEventListener("click", () => {
+  const all = SDS.loadAll();
+  if (!all.length) return toast("No records to export yet", true);
+  downloadBlob(SDS.toBlob(all), SDS.suggestedFilename());
+  toast(`Exported ${all.length} records as JSON`);
 });
 $("gImportBtn").addEventListener("click", () => $("gImportFile").click());
 $("gImportFile").addEventListener("change", async (e) => {
   const f = e.target.files[0]; if (!f) return;
   try {
-    const r = SDS.importArchive(JSON.parse(await f.text()));
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    // sniff: JSON archives start with whitespace/{/[, FlatBuffer streams don't
+    const first = bytes.find((b) => b !== 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d);
+    const r = (first === 0x7b || first === 0x5b)
+      ? SDS.importArchive(JSON.parse(new TextDecoder().decode(bytes)))
+      : await SDS.importFlatBufferArchive(bytes);
     rules = SDS.byStandard("TRP").slice(-1)[0]?.rules || rules;
     renderRecords(); renderRules(); redraw();
     toast(`Imported ${r.added} records (${r.total} total)`);
