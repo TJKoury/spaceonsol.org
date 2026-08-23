@@ -4,10 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=11";
-import * as EPM from "./epm.js?v=11";
-import { listWallets, connectTo } from "./wallet.js?v=11";
-import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=11";
+import * as SDS from "./sds-store.js?v=12";
+import * as EPM from "./epm.js?v=12";
+import { listWallets, connectTo } from "./wallet.js?v=12";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=12";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -335,7 +335,8 @@ $("connectBtn").addEventListener("click", async () => {
   if (wallet) {
     try { await provider.disconnect(); } catch {}
     provider = null; wallet = null; walletPubBytes = null;
-    $("wlabel").textContent = "Connect wallet"; $("connectBtn").classList.remove("on");
+    $("wlabel").textContent = i18t(LANG, "connect"); $("connectBtn").classList.remove("on");
+    $("walletChip").hidden = true;
     ["assignBtn", "signEpmBtn", "msgSignBtn"].forEach((i) => $(i).disabled = true);
     $("syncInfo").textContent = "Not connected.";
     stopChainSync();
@@ -352,6 +353,10 @@ $("connectBtn").addEventListener("click", async () => {
     provider = w; wallet = w.publicKey.toString();
     walletPubBytes = w.publicKey.toBytes();
     $("wlabel").textContent = short(wallet); $("connectBtn").classList.add("on");
+    $("walletChip").textContent = short(wallet);
+    $("walletChip").title = wallet;
+    $("walletChip").href = "https://solscan.io/account/" + wallet;
+    $("walletChip").hidden = false;
     ["assignBtn", "signEpmBtn", "msgSignBtn"].forEach((i) => $(i).disabled = false);
     Graph.setYou(wallet);
     // your own key is Ultimate trust, by definition
@@ -618,6 +623,7 @@ function redraw() {
   renderList();
 }
 $("fitBtn").addEventListener("click", () => Graph.recenter());
+$("graphEmpty").addEventListener("click", () => { if (!wallet) $("connectBtn").click(); });
 
 /* ---------- node popover: set level + note by clicking a node ---------- */
 SDS.TRUST_LEVELS.forEach((l) => $("npLevel").add(new Option(`${l.sds} — PGP “${l.pgp}”`, l.sds)));

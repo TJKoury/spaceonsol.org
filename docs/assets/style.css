@@ -833,3 +833,48 @@ html[data-theme="light"] .prob-close{color:#333c50}
 /* buttons with inline svg icons */
 .graph-io button,#uploadIdBtn,.theme-toggle,.tut-info{display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .graph-io button svg,#uploadIdBtn svg{flex:none}
+
+
+/* ============ APP SHELL (trust page fills the viewport) ============ */
+body.app{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+body.app #nav{position:static;flex:none}
+.app-main{flex:1;min-height:0;overflow-y:auto;scroll-behavior:smooth}
+.app-title{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:800;
+  font-size:.95rem;letter-spacing:.12em;text-transform:uppercase;color:var(--txt);white-space:nowrap}
+.app-title::before{content:"[ ";color:var(--accent2)}
+.app-title::after{content:" ]";color:var(--accent2)}
+body.app #graph-sec{height:100%;padding:12px 0 14px;display:flex}
+body.app #graph-sec .wrap{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
+body.app .graph-card{flex:1;height:auto;min-height:320px}
+body.app .tut-info-row{display:none}
+
+/* status strip + info toggle, upper-left of the card */
+.card-status{position:absolute;top:12px;left:12px;right:360px;z-index:12;display:flex;align-items:center;gap:9px}
+@media(max-width:900px){.card-status{right:12px;top:54px}}
+.card-status .tut-info{flex:none;width:32px;height:32px;background:rgba(6,7,13,.72);border-radius:8px}
+.card-status #syncInfo{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:#8b93a7;
+  background:rgba(6,7,13,.72);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:7px 11px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* tutorial as an overlay inside the card */
+.graph-card .tut{position:absolute;inset:0;z-index:14;margin:0;max-width:none;border-radius:0;border:0;
+  display:flex;flex-direction:column;justify-content:center;background:rgba(6,8,14,.97)}
+.graph-card .tut[hidden]{display:none}
+.graph-card .tut-track{flex:none}
+.graph-card .tut-slide{max-width:560px;margin:0 auto}
+
+/* empty state doubles as the connect action */
+.graph-empty{pointer-events:auto;cursor:pointer}
+.graph-empty .ge-title{text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(70,224,200,.5)}
+.graph-empty:hover .ge-title{color:#46e0c8}
+
+@media(max-width:760px){
+  body.app .graph-card{min-height:0;height:auto}
+  .card-status{right:12px}
+  .app-title{display:none}
+}
+
+@media(max-width:760px){
+  body.app .graph-tools{position:absolute;top:auto;left:12px;right:12px;bottom:58px;
+    justify-content:flex-end;border-top:0;padding:0}
+}
