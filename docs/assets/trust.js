@@ -4,9 +4,9 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=4";
-import * as EPM from "./epm.js?v=4";
-import { listWallets, connectTo } from "./wallet.js?v=4";
+import * as SDS from "./sds-store.js?v=5";
+import * as EPM from "./epm.js?v=5";
+import { listWallets, connectTo } from "./wallet.js?v=5";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -486,11 +486,20 @@ $("fitBtn").addEventListener("click", () => Graph.recenter());
 /* ---------- node popover: set level + note by clicking a node ---------- */
 SDS.TRUST_LEVELS.forEach((l) => $("npLevel").add(new Option(`${l.sds} — PGP “${l.pgp}”`, l.sds)));
 let npNodeId = null;
+let npSavedId = null;    // record created by autosave this session — replaced, not stacked
+let npSaveTimer = null;
 
-function closeNodePop() { npNodeId = null; $("nodePop").hidden = true; }
+function closeNodePop() {
+  if (npSaveTimer) { clearTimeout(npSaveTimer); npSaveTimer = null; saveNodeEdits(); }
+  npNodeId = null; npSavedId = null;
+  $("nodePop").hidden = true;
+}
 
 function openNodePop(node) {
+  if (npNodeId && npNodeId !== node.id) closeNodePop();   // flush pending edits first
   npNodeId = node.id;
+  npSavedId = null;
+  $("npSaved").hidden = true;
   const nm = SNS_NAMES.get(node.id);
   $("npAddr").textContent = (node.you ? "you · " + short(node.id) : short(node.id)) + (nm ? " · " + nm : "");
   $("npAddr").title = node.id;
@@ -514,7 +523,7 @@ function openNodePop(node) {
     $("npX").value = edge._xAccount ? "@" + edge._xAccount : "";
     updateNpXLink();
     hint.hidden = !edge.DELETED;
-    if (edge.DELETED) hint.textContent = "Revoked — saving a level re-instates this edge locally.";
+    if (edge.DELETED) hint.textContent = "Revoked — changing the level re-instates this edge locally.";
   }
   $("nodePop").hidden = false;
   positionNodePop();
@@ -545,21 +554,37 @@ function updateNpXLink() {
 }
 $("npX").addEventListener("input", updateNpXLink);
 
-$("npSave").addEventListener("click", () => {
-  if (!wallet || !npNodeId) return;
+/* Autosave: level changes save immediately; note / X handle save after a
+   short pause. Repeated saves in one popover session replace the previous
+   autosaved record instead of stacking history. */
+function saveNodeEdits() {
+  if (!wallet || !npNodeId || $("npBody").hidden) return;
   const edgeId = `${wallet}->${npNodeId}`;
   // preserve the bond details from the last live version of this edge
-  const prior = SDS.loadAll().filter((r) => r.STANDARD === "TRE" && r.EDGE_ID === edgeId && !r.DELETED).slice(-1)[0];
-  SDS.addRecord(SDS.makeTRE({
+  const prior = SDS.loadAll().filter((r) =>
+    r.STANDARD === "TRE" && r.EDGE_ID === edgeId && !r.DELETED && r.id !== npSavedId).slice(-1)[0];
+  if (npSavedId) SDS.removeRecord(npSavedId);
+  const rec = SDS.makeTRE({
     trusterId: wallet, trusteeId: npNodeId,
     level: $("npLevel").value, note: $("npNote").value.trim(),
     xAccount: cleanXHandle($("npX").value),
     amount: prior?._amount ?? null, signature: prior?._txSignature ?? null,
-  }));
+  });
+  SDS.addRecord(rec);
+  npSavedId = rec.id;
   redraw(); renderRecords();
-  toast(`${$("npLevel").value} trust set for ${short(npNodeId)}`);
-  closeNodePop();
-});
+  const s = $("npSaved");
+  s.hidden = false;
+  clearTimeout(saveNodeEdits._t);
+  saveNodeEdits._t = setTimeout(() => (s.hidden = true), 1600);
+}
+function queueNodeSave() {
+  clearTimeout(npSaveTimer);
+  npSaveTimer = setTimeout(() => { npSaveTimer = null; saveNodeEdits(); }, 700);
+}
+$("npLevel").addEventListener("change", () => { clearTimeout(npSaveTimer); npSaveTimer = null; saveNodeEdits(); });
+$("npNote").addEventListener("input", queueNodeSave);
+$("npX").addEventListener("input", queueNodeSave);
 
 /* ---------- trust matrix import / export, on the graph ---------- */
 function downloadBlob(blob, filename) {

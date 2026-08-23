@@ -300,7 +300,7 @@ const localsOf = (r) => Object.fromEntries(Object.entries(r).filter(([k]) => k.s
 export async function toFlatBufferArchive(records = loadAll()) {
   const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
     [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
-  const EPMlib = await import("./epm.js?v=4");
+  const EPMlib = await import("./epm.js?v=5");
 
   const chunks = [], ids = [], stds = [], locals = {}, extra = [];
   const str = (B, v) => (v ? B.createString(String(v)) : null);
@@ -368,7 +368,7 @@ export async function toFlatBufferArchive(records = loadAll()) {
 export async function importFlatBufferArchive(bytes) {
   const [fb, { TRE }, { TNR }, { PNM }] = await Promise.all(
     [FB_JS, SDS_JS + "TRE/main.js", SDS_JS + "TNR/main.js", SDS_JS + "PNM/main.js"].map((u) => import(u)));
-  const EPMlib = await import("./epm.js?v=4");
+  const EPMlib = await import("./epm.js?v=5");
 
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const msgs = [];

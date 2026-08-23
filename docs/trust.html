@@ -6,7 +6,7 @@
 <title>Your Trust Graph — $SPACE</title>
 <meta name="description" content="Your own web of trust on Solana: explicit PGP-style trust levels, signed EPM identity, vCard and QR export, and signed messages.">
 <link rel="icon" type="image/jpeg" href="images/space-token-logo.jpg">
-<link rel="stylesheet" href="assets/style.css?v=4">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
 
@@ -69,15 +69,14 @@
         <input type="file" id="gImportFile" accept=".sds,.bin,.json,application/json,application/octet-stream" hidden>
       </div>
       <div id="nodePop" class="node-pop" hidden>
-        <div class="np-head"><code id="npAddr" title=""></code><button id="npClose" class="np-x" aria-label="Close">✕</button></div>
+        <div class="np-head"><code id="npAddr" title=""></code>
+          <span id="npSaved" class="np-saved" hidden>saved ✓</span>
+          <button id="npClose" class="np-x" aria-label="Close">✕</button></div>
         <div class="np-body" id="npBody">
           <label>Trust level<select id="npLevel"></select></label>
           <label>Note <span class="hint">local only</span><input id="npNote" placeholder="Why you trust this key"></label>
           <label>X account<input id="npX" placeholder="@handle"></label>
           <a id="npXLink" class="np-xlink" target="_blank" rel="noopener" hidden></a>
-          <div class="np-btns">
-            <button id="npSave" class="mini strong">Save</button>
-          </div>
         </div>
         <p class="np-hint" id="npHint" hidden></p>
       </div>
@@ -335,6 +334,6 @@
 
 <div id="toast" class="toast"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="assets/trust.js?v=4"></script>
+<script type="module" src="assets/trust.js?v=5"></script>
 </body>
 </html>
