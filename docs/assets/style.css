@@ -19,6 +19,26 @@
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
   --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
 }
+html[data-theme="light"]{
+  --bg:#f3f5fa; --bg2:#e9edf5; --panel:#ffffff; --panel2:#f1f3f9;
+  --line:rgba(12,22,44,.10); --line2:rgba(12,22,44,.18);
+  --txt:#171c29; --muted:#4b5468; --dim:#7b8398;
+  --accent:#2f6fe0; --accent2:#0d9e88; --gold:#b07a17; --danger:#d84848;
+  --glass:rgba(12,22,44,.045); --glass-hi:rgba(12,22,44,.085);
+  --glass-line:rgba(12,22,44,.13); --glass-line-hi:rgba(12,22,44,.24);
+  --sheen:inset 0 1px 0 rgba(255,255,255,.65), inset 0 -1px 0 rgba(12,22,44,.05);
+  --lift:0 8px 28px rgba(15,25,50,.14), 0 2px 6px rgba(15,25,50,.08);
+}
+/* surfaces that hard-code dark rgba: re-skin in light mode */
+html[data-theme="light"] code{background:rgba(12,22,44,.07)}
+html[data-theme="light"] .container.narrow p{color:#333c50}
+html[data-theme="light"] #nav{background:rgba(243,245,250,.88)}
+html[data-theme="light"] .nav-links{background:transparent}
+html[data-theme="light"] .wmodal{background:rgba(230,235,244,.7)}
+html[data-theme="light"] .wmodal-box{background:rgba(252,253,255,.97)}
+html[data-theme="light"] .toast{background:#fff;color:var(--txt)}
+/* the graph console itself stays dark — canvas colors are tuned for it */
+html[data-theme="light"] .graph-card{background:#0a0d16;border-color:rgba(12,22,44,.25)}
 html{scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--bg);color:var(--txt);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--accent);text-decoration:none;transition:opacity .15s}
@@ -65,7 +85,8 @@ img{max-width:100%;display:block}
   70%{box-shadow:0 0 0 5px rgba(70,224,200,0)}
   100%{box-shadow:0 0 0 0 rgba(70,224,200,0)}
 }
-#menu-btn{display:none;background:none;border:1px solid var(--line2);color:var(--txt);font-size:1.2rem;padding:2px 12px;border-radius:8px;cursor:pointer}
+#menu-btn{display:none;align-items:center;justify-content:center;width:56px;height:46px;padding:0;line-height:1;
+  background:none;border:1px solid var(--line2);color:var(--txt);font-size:1.56rem;border-radius:10px;cursor:pointer}
 
 /* ============ HERO ============ */
 .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;position:relative;padding:120px 24px 80px;overflow:hidden}
@@ -117,6 +138,9 @@ img{max-width:100%;display:block}
 .btn-primary:hover{border-color:rgba(70,224,200,.6);
   background:linear-gradient(160deg,rgba(70,224,200,.24),rgba(70,224,200,.08));
   box-shadow:var(--sheen),0 8px 30px rgba(70,224,200,.16)}
+.btn-bright{color:#04251f !important;background:linear-gradient(135deg,#46e0c8,#59b4ff);font-weight:800;
+  border:0;box-shadow:0 0 26px rgba(70,224,200,.5),0 4px 14px rgba(0,0,0,.35)}
+.btn-bright:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(70,224,200,.7),0 6px 18px rgba(0,0,0,.4)}
 .btn-ghost{color:var(--muted)}
 .btn-ghost:hover{color:var(--txt)}
 .btn-sm{padding:9px 18px;font-size:.85rem;border-radius:10px}
@@ -712,8 +736,60 @@ label input::placeholder,.t-adv input::placeholder{color:var(--dim)}
   .nav-links{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:8px;
     background:rgba(6,7,13,.98);padding:18px 24px;border-bottom:1px solid var(--line)}
   #nav.open .nav-links{display:flex}
-  #menu-btn{display:block}
+  #menu-btn{display:flex}
   .section{padding:60px 0}
   .hero{padding-top:100px}
   .price-card{min-width:100px;padding:14px 18px}
 }
+
+/* ============ THEME + LANGUAGE CONTROLS ============ */
+.theme-toggle{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  background:var(--glass);border:1px solid var(--glass-line);color:var(--txt);cursor:pointer;
+  font-size:1.05rem;line-height:1;transition:.18s}
+.theme-toggle:hover{border-color:var(--glass-line-hi);background:var(--glass-hi)}
+.lang-select{background:var(--glass);border:1px solid var(--glass-line);color:var(--txt);border-radius:9px;
+  padding:7px 9px;font-family:inherit;font-size:.82rem;cursor:pointer}
+html[data-theme="light"] .lang-select option{color:#171c29}
+
+/* ============ GRAPH / LIST VIEW TOGGLE + LIST ============ */
+.view-toggle{display:flex;border:1px solid var(--glass-line);border-radius:9px;overflow:hidden}
+.view-toggle button{font-family:inherit;font-size:.78rem;color:#8b93a7;background:rgba(6,7,13,.6);
+  border:0;padding:7px 13px;cursor:pointer;transition:.16s}
+.view-toggle button.on{color:#eafcf8;background:rgba(70,224,200,.16)}
+.list-view{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;background:rgba(6,8,14,.97);padding:56px 14px 14px}
+.list-view[hidden]{display:none}
+.list-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.list-bar input{flex:1;min-width:160px;font-size:.86rem;padding:8px 11px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);border-radius:9px;color:#e7ecf3}
+.list-bar .mini{white-space:nowrap}
+.list-scroll{flex:1;overflow:auto;border:1px solid rgba(255,255,255,.09);border-radius:10px}
+.node-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.node-table th{position:sticky;top:0;z-index:2;text-align:left;font-family:ui-monospace,Menlo,monospace;
+  font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:#8b93a7;cursor:pointer;user-select:none;
+  background:#0d1019;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.12);white-space:nowrap}
+.node-table th .arr{color:#46e0c8}
+.node-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.055);color:#c6cddb;white-space:nowrap}
+.node-table tbody tr{cursor:pointer;transition:background .12s}
+.node-table tbody tr:hover{background:rgba(70,224,200,.06)}
+.node-table .nt-name{color:#46e0c8;font-weight:650}
+.node-table .nt-addr{font-family:ui-monospace,Menlo,monospace;font-size:.72rem;color:#8b93a7}
+.node-table .nt-id{color:#6ea8ff;font-weight:600}
+.nt-lvl{display:inline-flex;align-items:center;gap:6px}
+.nt-lvl i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.nt-tag{font-size:.64rem;font-family:ui-monospace,Menlo,monospace;color:#ffc25c}
+.nt-empty{padding:26px;text-align:center;color:#5c6478}
+
+/* ============ MOBILE GRAPH ============ */
+#graph{touch-action:none}
+@media(max-width:760px){
+  .graph-card{height:70vh;min-height:420px}
+  .graph-legend{display:none}
+  .console-bar{font-size:.62rem;padding:6px 9px}
+  .list-view{padding-top:52px}
+}
+
+/* light-theme fixes for accent buttons */
+html[data-theme="light"] .btn-primary{color:#063a30;border-color:rgba(13,158,136,.5);
+  background:linear-gradient(160deg,rgba(13,158,136,.18),rgba(13,158,136,.07))}
+html[data-theme="light"] .btn-primary:hover{border-color:rgba(13,158,136,.75)}
+html[data-theme="light"] .wbtn{color:#063a30}

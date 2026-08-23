@@ -4,9 +4,10 @@ import {
   getAssociatedTokenAddress, createTransferInstruction,
   createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import * as SDS from "./sds-store.js?v=8";
-import * as EPM from "./epm.js?v=8";
-import { listWallets, connectTo } from "./wallet.js?v=8";
+import * as SDS from "./sds-store.js?v=9";
+import * as EPM from "./epm.js?v=9";
+import { listWallets, connectTo } from "./wallet.js?v=9";
+import { LANG_NAMES, applyLang, t as i18t } from "./i18n.js?v=9";
 
 const MINT_STR = "Ge5rnW2w6EzSh3EkQWxH76P8LEjEJE7qe7entq9pLQ3F";
 const MINT = new PublicKey(MINT_STR);
@@ -85,6 +86,19 @@ $("legend").innerHTML =
 
 /* ---------- address / .sol name resolution ---------- */
 const snsCache = new Map();
+
+/* ---------- language ---------- */
+let LANG = localStorage.getItem("sdn.lang") || (navigator.language || "en").slice(0, 2);
+if (!LANG_NAMES[LANG]) LANG = "en";
+Object.entries(LANG_NAMES).forEach(([c, n]) => $("langSel").add(new Option(n, c)));
+$("langSel").value = LANG;
+applyLang(LANG);
+$("langSel").addEventListener("change", () => {
+  LANG = $("langSel").value;
+  localStorage.setItem("sdn.lang", LANG);
+  applyLang(LANG);
+  renderList();
+});
 
 /* ---------- tutorial carousel — full-size on first visit only ---------- */
 (() => {
@@ -601,6 +615,7 @@ function redraw() {
 
   $("syncInfo").textContent = statusLine();
   Graph.refreshEmpty();
+  renderList();
 }
 $("fitBtn").addEventListener("click", () => Graph.recenter());
 
@@ -777,7 +792,118 @@ $("hiddenFilter").addEventListener("input", renderHiddenList);
 $("hiddenShowAllBtn").addEventListener("click", () => { hiddenNodes.clear(); saveHidden(); renderHiddenList(); redraw(); });
 $("hiddenCloseBtn").addEventListener("click", () => ($("hiddenModal").hidden = true));
 $("hiddenModal").addEventListener("click", (e) => { if (e.target === $("hiddenModal")) $("hiddenModal").hidden = true; });
-saveHidden();   // initialise the "hidden (n)" button state
+saveHidden();   // initialise the "archived (n)" button state
+
+/* ---------- identities from signed EPMs / vCards ---------- */
+// address -> { name, ok } from locally stored EPM records. Uploading a signed
+// EPM or vCard binds a human identity to the wallet addresses it attests.
+let IDENTITIES = new Map();
+function rebuildIdentities() {
+  IDENTITIES = new Map();
+  const b58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  for (const r of SDS.byStandard("EPM")) {
+    const name = r.LEGAL_NAME || [r.GIVEN_NAME, r.FAMILY_NAME].filter(Boolean).join(" ") || r.DN;
+    if (!name) continue;
+    const addrs = new Set();
+    for (const k of r.KEYS || []) if (b58.test(k.KEY_ADDRESS || "")) addrs.add(k.KEY_ADDRESS);
+    for (const p of r.CHAIN_PROOFS || []) if (b58.test(p.ADDRESS || "")) addrs.add(p.ADDRESS);
+    for (const m of r.MULTIFORMAT_ADDRESS || []) {
+      const mm = String(m).match(/[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+      if (mm) addrs.add(mm[0]);
+    }
+    for (const a of addrs) IDENTITIES.set(a, { name, ok: !!r._sigOk });
+  }
+}
+rebuildIdentities();
+
+$("uploadIdBtn").addEventListener("click", () => $("uploadIdFile").click());
+$("uploadIdFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    let rec;
+    if (/\.vcf$|\.vcard$/i.test(f.name)) {
+      const r = EPM.fromVCard(await f.text());
+      if (!r.record) throw new Error(r.reason);
+      rec = r.record;
+    } else {
+      rec = EPM.decodeEPM(new Uint8Array(await f.arrayBuffer()));
+    }
+    const v = await EPM.verifyEPM(rec);
+    const bytes = EPM.encodeEPM(rec);
+    const cid = await EPM.cidV1Raw(bytes);
+    SDS.addRecord({
+      STANDARD: "EPM", schema: SDS.STANDARDS.EPM.url, id: "epm_" + cid.slice(0, 12),
+      ...rec, _cid: cid, _bytesB64: EPM.b64(bytes), _sigOk: v.ok,
+    });
+    rebuildIdentities(); renderRecords(); renderList();
+    toast(v.ok ? "Identity imported — signature verifies ✓" : "Imported, but signature INVALID: " + v.reason, !v.ok);
+  } catch (err) { toast("Identity import failed: " + err.message, true); }
+  e.target.value = "";
+});
+
+/* ---------- list view: searchable, sortable table over the same nodes ---------- */
+let listSort = { key: "bal", dir: -1 };
+function setView(list) {
+  $("listView").hidden = !list;
+  $("viewListBtn").classList.toggle("on", list);
+  $("viewGraphBtn").classList.toggle("on", !list);
+  if (list) renderList();
+}
+$("viewGraphBtn").addEventListener("click", () => setView(false));
+$("viewListBtn").addEventListener("click", () => setView(true));
+$("listSearch").addEventListener("input", () => renderList());
+document.querySelectorAll(".node-table th").forEach((th) =>
+  th.addEventListener("click", () => {
+    const k = th.dataset.sort;
+    listSort = { key: k, dir: listSort.key === k ? -listSort.dir : -1 };
+    renderList();
+  }));
+setInterval(() => { if (!$("listView").hidden) renderList(); }, 5000);  // pick up async lookups
+
+function listRows() {
+  return Graph.nodeList().map((n) => {
+    const edge = wallet ? SDS.projectEdges().find((e) => e.EDGE_ID === `${wallet}->${n.id}`) : null;
+    return {
+      id: n.id, you: n.you,
+      identity: IDENTITIES.get(n.id)?.name || "",
+      sns: SNS_NAMES.get(n.id) || "",
+      addr: n.id,
+      level: n.you ? "Admin" : (edge?._level || n.level || ""),
+      bal: SPACE_BAL.get(n.id) ?? null,
+      val: walletValueUsd(n.id),
+      tag: NODE_TAGS.get(n.id) || TYPE_BADGE[ACCT_TYPE.get(n.id)] || "",
+    };
+  });
+}
+
+function renderList() {
+  if ($("listView").hidden) return;
+  const q = ($("listSearch").value || "").toLowerCase().trim();
+  let rows = listRows().filter((r) => !q ||
+    [r.identity, r.sns, r.addr, r.level, r.tag].some((v) => String(v).toLowerCase().includes(q)));
+  const { key, dir } = listSort;
+  rows.sort((a, b) => {
+    const av = a[key], bv = b[key];
+    if (typeof av === "number" || typeof bv === "number") return ((av ?? -1) - (bv ?? -1)) * dir;
+    return String(av).localeCompare(String(bv)) * dir;
+  });
+  document.querySelectorAll(".node-table th").forEach((th) => {
+    th.innerHTML = i18t(LANG, th.dataset.i18n) + (th.dataset.sort === key ? ` <span class="arr">${dir < 0 ? "▼" : "▲"}</span>` : "");
+  });
+  $("listRows").innerHTML = rows.length ? rows.map((r) => `
+    <tr data-node="${r.id}">
+      <td class="nt-id">${r.identity ? r.identity + (IDENTITIES.get(r.id)?.ok ? " ✓" : "") : "—"}</td>
+      <td class="nt-name">${r.sns || "—"}</td>
+      <td class="nt-addr" title="${r.addr}">${r.you ? "you · " : ""}${short(r.addr)}</td>
+      <td><span class="nt-lvl"><i style="background:${levelColor(r.level)}"></i>${r.level || "—"}</span></td>
+      <td>${r.bal == null ? "…" : fmtC(r.bal)}</td>
+      <td>${r.val == null ? "…" : usdPlain(r.val)}</td>
+      <td class="nt-tag">${r.tag ? r.tag.toUpperCase() : ""}</td>
+    </tr>`).join("")
+    : `<tr><td colspan="7" class="nt-empty">${i18t(LANG, "listEmpty")}</td></tr>`;
+  $("listRows").querySelectorAll("[data-node]").forEach((tr) =>
+    tr.addEventListener("click", () => openNodePop({ id: tr.dataset.node, you: tr.dataset.node === wallet })));
+}
 $("gImportBtn").addEventListener("click", () => $("gImportFile").click());
 $("gImportFile").addEventListener("change", async (e) => {
   const f = e.target.files[0]; if (!f) return;
@@ -789,6 +915,7 @@ $("gImportFile").addEventListener("change", async (e) => {
       ? SDS.importArchive(JSON.parse(new TextDecoder().decode(bytes)))
       : await SDS.importFlatBufferArchive(bytes);
     rules = SDS.byStandard("TRP").slice(-1)[0]?.rules || rules;
+    rebuildIdentities();
     renderRecords(); renderRules(); redraw();
     toast(`Imported ${r.added} records (${r.total} total)`);
   } catch (err) { toast("Import failed: " + err.message, true); }
@@ -1139,7 +1266,7 @@ $("gdBtn").addEventListener("click", () => {
   }).requestAccessToken();
 });
 $("wipeBtn").addEventListener("click", () => {
-  SDS.clearAll(); rules = []; renderRecords(); renderRules(); redraw(); toast("Local records cleared");
+  SDS.clearAll(); rules = []; rebuildIdentities(); renderRecords(); renderRules(); redraw(); toast("Local records cleared");
 });
 
 /* ---------- graph renderer ---------- */
@@ -1187,13 +1314,15 @@ const Graph = (() => {
       if (n.you) { // anchor the ego node at centre
         n.x += (W/2 - n.x) * .12; n.y += (H/2 - n.y) * .12; n.vx *= .5; n.vy *= .5;
       } else { n.vx += (W/2-n.x)*.0007; n.vy += (H/2-n.y)*.0007; }
+      // no hard clamp — the graph may outgrow the card; panning covers it
       n.vx *= .85; n.vy *= .85; n.x += n.vx; n.y += n.vy;
-      n.x = Math.max(n.r+8, Math.min(W-n.r-8, n.x));
-      n.y = Math.max(n.r+8, Math.min(H-n.r-8, n.y));
     }
   }
+  let camX = 0, camY = 0;   // pan offset — swipe/drag empty space to move the whole graph
   function draw() {
     ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(camX, camY);
     for (const e of edges.values()) {
       const a = nodes.get(e.from), b = nodes.get(e.to); if (!a || !b) continue;
       const col = levelColor(e.level);
@@ -1241,7 +1370,7 @@ const Graph = (() => {
       ctx.fillStyle = n.you ? "#e7ecf3" : "#c6cddb";
       ctx.font = (n.you ? "700 " : "600 ") + "13.5px system-ui,sans-serif";
       ctx.fillText(n.you ? "you" : short(n.id), n.x, n.y + n.r + 17);
-      const nm = SNS_NAMES.get(n.id);
+      const nm = SNS_NAMES.get(n.id) || IDENTITIES.get(n.id)?.name;
       if (nm) {
         ctx.fillStyle = "rgba(70,224,200,.9)";
         ctx.font = "600 12px system-ui,sans-serif";
@@ -1249,34 +1378,47 @@ const Graph = (() => {
       }
     }
     ctx.textAlign = "start";
+    ctx.restore();
   }
-  let drag = null, downAt = null, moved = false, clickCb = null;
+  let drag = null, downAt = null, moved = false, clickCb = null, lastP = null;
   const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX-r.left, y: e.clientY-r.top }; };
-  const hit = (p) => [...nodes.values()].find((n) => (p.x-n.x)**2 + (p.y-n.y)**2 < (n.r+6)**2);
-  canvas.addEventListener("mousedown", (e) => { const p = pos(e); drag = hit(p); downAt = p; moved = false; });
+  const world = (p) => ({ x: p.x - camX, y: p.y - camY });
+  const hit = (p) => { const w = world(p); return [...nodes.values()].find((n) => (w.x-n.x)**2 + (w.y-n.y)**2 < (n.r+6)**2); };
+  const down = (p) => { drag = hit(p); downAt = p; lastP = p; moved = false; };
+  const move = (p) => {
+    if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 5) moved = true;
+    if (!downAt || !moved) return false;
+    if (drag) { const w = world(p); drag.x = w.x; drag.y = w.y; drag.vx = drag.vy = 0; }
+    else { camX += p.x - lastP.x; camY += p.y - lastP.y; }   // pan the whole graph
+    lastP = p;
+    return true;
+  };
+  const up = (isCanvas) => {
+    if (downAt && !moved && isCanvas && clickCb) clickCb(drag || null);
+    drag = null; downAt = null; lastP = null; moved = false;
+  };
+  canvas.addEventListener("mousedown", (e) => down(pos(e)));
   addEventListener("mousemove", (e) => {
     const p = pos(e);
-    if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 4) moved = true;
-    if (drag && moved) { drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; return; }
+    if (move(p)) return;
+    if (downAt) return;
     const n = hit(p); canvas.style.cursor = n ? "pointer" : "";
     canvas.title = n ? `${n.id}${SNS_NAMES.get(n.id) ? "\n" + SNS_NAMES.get(n.id) : ""}\n${n.you ? "your key" : n.level + " trust"} — click to edit` : "";
   });
-  addEventListener("mouseup", (e) => {
-    if (downAt && !moved && e.target === canvas && clickCb) clickCb(drag || null);
-    drag = null; downAt = null; moved = false;
-  });
-  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); const p = { x: t.clientX-r.left, y: t.clientY-r.top }; drag = hit(p); downAt = p; moved = false; }, { passive: true });
-  canvas.addEventListener("touchmove", (e) => { if (!drag) return; const t = e.touches[0], r = canvas.getBoundingClientRect(); const p = { x: t.clientX-r.left, y: t.clientY-r.top }; if (downAt && Math.hypot(p.x-downAt.x, p.y-downAt.y) > 6) moved = true; if (moved) { drag.x = p.x; drag.y = p.y; drag.vx = drag.vy = 0; } }, { passive: true });
-  canvas.addEventListener("touchend", () => { if (downAt && !moved && clickCb) clickCb(drag || null); drag = null; downAt = null; moved = false; });
+  addEventListener("mouseup", (e) => up(e.target === canvas));
+  canvas.addEventListener("touchstart", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); down({ x: t.clientX-r.left, y: t.clientY-r.top }); }, { passive: true });
+  canvas.addEventListener("touchmove", (e) => { const t = e.touches[0], r = canvas.getBoundingClientRect(); move({ x: t.clientX-r.left, y: t.clientY-r.top }); }, { passive: true });
+  canvas.addEventListener("touchend", () => up(true));
   (function loop() { step(); draw(); requestAnimationFrame(loop); })();
   resize();
   return {
     addNode, addEdge,
     setYou: (a) => { you = a; },
     getNode: (id) => nodes.get(id) || null,
+    nodeList: () => [...nodes.values()].map((n) => ({ id: n.id, you: n.you, level: n.level })),
     onNodeClick: (fn) => { clickCb = fn; },
     reset: () => { for (const n of nodes.values()) posCache.set(n.id, { x: n.x, y: n.y }); nodes.clear(); edges.clear(); },
-    recenter: () => { posCache.clear(); for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
+    recenter: () => { camX = camY = 0; posCache.clear(); for (const n of nodes.values()) { n.x = W/2 + (Math.random()-.5)*180; n.y = H/2 + (Math.random()-.5)*180; } },
     refreshEmpty: () => ($("graphEmpty").style.display = nodes.size ? "none" : "flex"),
   };
 })();
