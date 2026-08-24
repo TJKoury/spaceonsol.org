@@ -761,9 +761,9 @@ label input::placeholder,.t-adv input::placeholder{color:var(--dim)}
 html[data-theme="light"] .lang-select option{color:#171c29}
 
 /* ============ GRAPH / LIST VIEW TOGGLE + LIST ============ */
-.view-toggle{display:flex;border:1px solid var(--glass-line);border-radius:9px;overflow:hidden}
-.view-toggle button{font-family:inherit;font-size:.78rem;color:#8b93a7;background:rgba(6,7,13,.6);
-  border:0;padding:7px 13px;cursor:pointer;transition:.16s}
+.view-toggle{display:flex;border:1px solid var(--glass-line);border-radius:11px;overflow:hidden}
+.view-toggle button{font-family:inherit;font-size:1.17rem;color:#8b93a7;background:rgba(6,7,13,.6);
+  border:0;padding:11px 20px;cursor:pointer;transition:.16s}
 .view-toggle button.on{color:#eafcf8;background:rgba(70,224,200,.16)}
 .list-view{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;background:rgba(6,8,14,.97);padding:56px 14px 14px}
 .list-view[hidden]{display:none}
