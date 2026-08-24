@@ -859,7 +859,8 @@ body.app .tut-info-row{display:none}
 /* status strip + info toggle, upper-left of the card */
 .card-status{position:absolute;top:12px;left:12px;right:360px;z-index:12;display:flex;align-items:center;gap:9px}
 @media(max-width:900px){.card-status{right:12px;top:54px}}
-.card-status .tut-info{flex:none;width:32px;height:32px;background:rgba(6,7,13,.72);border-radius:8px}
+.card-status .tut-info{flex:none;width:44px;height:44px;background:rgba(6,7,13,.72);border-radius:10px}
+.card-status .tut-info svg{width:21px;height:21px}
 .card-status #syncInfo{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:#8b93a7;
   background:rgba(6,7,13,.72);border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:7px 11px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -894,10 +895,11 @@ body.app .app-main{overflow:hidden}
 body.app .tsec:not(#graph-sec),body.app .footer{display:none}
 
 /* card chrome: corners + centered tabs + bottom status */
-.corner-tl{position:absolute;top:10px;left:10px;z-index:13;width:34px;height:34px;border-radius:9px;
+.corner-tl{position:absolute;top:12px;left:12px;z-index:13;width:44px;height:44px;border-radius:10px;
   background:rgba(6,7,13,.72)}
-.corner-tr{position:absolute;top:10px;right:10px;z-index:13;width:34px;height:34px;border-radius:9px;
+.corner-tr{position:absolute;top:12px;right:12px;z-index:13;width:44px;height:44px;border-radius:10px;
   background:rgba(6,7,13,.72)}
+.corner-tl svg,.corner-tr svg{width:21px;height:21px}
 .graph-tools{left:50%;right:auto;top:10px;transform:translateX(-50%)}
 .card-status{top:auto;left:50%;right:auto;bottom:14px;transform:translateX(-50%);max-width:52%}
 .card-status #syncInfo{max-width:100%}
