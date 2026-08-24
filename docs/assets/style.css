@@ -385,22 +385,29 @@ a.nm-sub[href]:hover{color:var(--txt);text-decoration:underline}
 /* tutorial carousel */
 .tut{position:relative;max-width:640px;margin:0 auto 30px;border-radius:14px;overflow:hidden;
   background:rgba(255,255,255,.025);border:1px solid var(--glass-line);box-shadow:var(--sheen)}
-.tut-x{position:absolute;top:10px;right:10px;z-index:5;width:40px;height:40px;display:flex;
-  align-items:center;justify-content:center;background:none;border:1px solid transparent;border-radius:9px;
-  color:var(--muted);cursor:pointer;font-size:1.25rem;line-height:1;transition:.16s}
+.tut-x{position:absolute;top:12px;right:12px;z-index:5;width:52px;height:52px;display:flex;
+  align-items:center;justify-content:center;background:none;border:1px solid transparent;border-radius:11px;
+  color:var(--muted);cursor:pointer;line-height:1;transition:.16s}
+.tut-x svg{width:28px;height:28px}
 .tut-x:hover{color:var(--txt);background:rgba(255,255,255,.07);border-color:var(--glass-line)}
 .tut-track{display:flex;transition:transform .45s cubic-bezier(.4,0,.2,1)}
-.tut-slide{flex:0 0 100%;display:flex;align-items:center;gap:18px;padding:20px 26px}
-.tut-slide svg{width:190px;flex:none}
-.tut-slide b{display:block;font-family:ui-monospace,Menlo,monospace;font-size:.95rem;letter-spacing:.03em;margin-bottom:5px}
-.tut-slide p{color:var(--muted);font-size:.87rem;line-height:1.55;margin:0}
+.tut-slide{flex:0 0 100%;display:flex;align-items:center;gap:clamp(18px,3vw,32px);padding:clamp(20px,3.5vw,34px) clamp(24px,4vw,44px)}
+.tut-ico{flex:none;display:flex;align-items:center;justify-content:center;
+  width:clamp(76px,14vw,116px);height:clamp(76px,14vw,116px);border-radius:50%;
+  background:rgba(255,255,255,.04);border:1px solid var(--glass-line)}
+.tut-ico svg{width:55%;height:55%}
+.tut-ico.teal{color:#46e0c8;background:rgba(70,224,200,.1);border-color:rgba(70,224,200,.35)}
+.tut-ico.blue{color:#6ea8ff;background:rgba(110,168,255,.1);border-color:rgba(110,168,255,.35)}
+.tut-ico.amber{color:#ffc25c;background:rgba(255,194,92,.1);border-color:rgba(255,194,92,.35)}
+.tut-slide b{display:block;font-family:ui-monospace,Menlo,monospace;font-size:clamp(1.05rem,1rem + .9vw,1.4rem);letter-spacing:.03em;margin-bottom:8px}
+.tut-slide p{color:var(--muted);font-size:clamp(.95rem,.88rem + .6vw,1.15rem);line-height:1.6;margin:0}
 .tut-nav{display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 0 12px}
 .tut-nav>button{background:none;border:0;color:var(--muted);font-size:1.25rem;cursor:pointer;padding:0 8px;line-height:1}
 .tut-nav>button:hover{color:var(--txt)}
 .tut-dots{display:flex;gap:7px}
 .tut-dot{width:7px;height:7px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(255,255,255,.18);transition:.2s}
 .tut-dot.on{background:var(--accent2);transform:scale(1.25)}
-@media(max-width:600px){.tut-slide{flex-direction:column;text-align:center}.tut-slide svg{width:160px}}
+@media(max-width:600px){.tut-slide{flex-direction:column;text-align:center}.tut-ico{width:72px;height:72px}}
 
 /* hidden-nodes modal */
 .hidden-filter{width:100%;margin-bottom:12px;font-size:.86rem;padding:9px 11px}
@@ -863,7 +870,7 @@ body.app .tut-info-row{display:none}
 .graph-card .tut[hidden]{display:none}
 .graph-card .tut-track{flex:none}
 .graph-card .tut-slide{max-width:none;justify-content:center}
-.graph-card .tut-slide>div{max-width:360px}
+.graph-card .tut-slide>div{max-width:440px}
 
 /* empty state doubles as the connect action */
 .graph-empty{pointer-events:auto;cursor:pointer}

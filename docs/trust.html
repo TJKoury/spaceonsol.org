@@ -42,49 +42,22 @@ d.dataset.theme=n;localStorage.setItem("theme",n);};})();</script>
       <button id="fitBtn" class="tut-info corner-tr" title="Reset view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg></button>
       <span id="syncInfo" hidden></span>
       <div class="tut" id="tut">
-        <button id="tutCloseBtn" class="tut-x" aria-label="Close tutorial">✕</button>
+        <button id="tutCloseBtn" class="tut-x" aria-label="Close tutorial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         <div class="tut-track" id="tutTrack">
           <div class="tut-slide">
-            <svg viewBox="0 0 220 90" aria-hidden="true">
-              <circle cx="45" cy="45" r="20" fill="rgba(70,224,200,.18)" stroke="#46e0c8" stroke-width="2"/>
-              <circle cx="175" cy="45" r="15" fill="rgba(110,168,255,.18)" stroke="#6ea8ff" stroke-width="2"/>
-              <line x1="67" y1="45" x2="152" y2="45" stroke="#46e0c8" stroke-width="2.5"/>
-              <path d="M152 45 l-11 -6 v12 z" fill="#46e0c8"/>
-              <text x="108" y="34" fill="#ffc25c" font-size="11" text-anchor="middle" font-family="monospace">$SPACE</text>
-            </svg>
+            <div class="tut-ico teal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
             <div><b data-i18n="tut1t">Send $SPACE — forge a link</b><p data-i18n="tut1b">A transfer to a key creates a trust edge. The bond is public, on-chain, permanent. No transfer, no link.</p></div>
           </div>
           <div class="tut-slide">
-            <svg viewBox="0 0 220 90" aria-hidden="true">
-              <circle cx="110" cy="42" r="19" fill="rgba(110,168,255,.18)" stroke="#6ea8ff" stroke-width="2"/>
-              <circle cx="110" cy="42" r="27" fill="none" stroke="#ffc25c" stroke-width="2" stroke-dasharray="5 5"/>
-              <rect x="150" y="26" width="46" height="32" rx="5" fill="rgba(255,255,255,.05)" stroke="#8b93a7"/>
-              <rect x="165" y="36" width="16" height="12" rx="2" fill="none" stroke="#ffc25c" stroke-width="2"/>
-              <path d="M168 36 v-4 a5 5 0 0 1 10 0 v4" fill="none" stroke="#ffc25c" stroke-width="2"/>
-              <text x="110" y="82" fill="#8b93a7" font-size="10" text-anchor="middle" font-family="monospace">levels · notes · X</text>
-            </svg>
+            <div class="tut-ico blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg></div>
             <div><b data-i18n="tut2t">Your levels stay local</b><p data-i18n="tut2b">PGP-style trust levels, notes and X handles live only in this browser — your judgement, never the chain's.</p></div>
           </div>
           <div class="tut-slide">
-            <svg viewBox="0 0 220 90" aria-hidden="true">
-              <circle cx="60" cy="45" r="22" fill="rgba(70,224,200,.18)" stroke="#46e0c8" stroke-width="2"/>
-              <text x="60" y="49" fill="#46e0c8" font-size="11" text-anchor="middle" font-family="monospace">10M</text>
-              <circle cx="165" cy="45" r="22" fill="rgba(255,107,107,.14)" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="4 4"/>
-              <text x="165" y="49" fill="#ff6b6b" font-size="11" text-anchor="middle" font-family="monospace">0</text>
-              <text x="60" y="83" fill="#46e0c8" font-size="10" text-anchor="middle" font-family="monospace">intact</text>
-              <text x="165" y="83" fill="#ff6b6b" font-size="10" text-anchor="middle" font-family="monospace">drained → Never</text>
-            </svg>
+            <div class="tut-ico amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1 1 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></div>
             <div><b data-i18n="tut3t">The bond is the sentinel</b><p data-i18n="tut3b">Funds still sitting at a key prove it's intact. A key drained to zero is flagged Untrusted automatically.</p></div>
           </div>
           <div class="tut-slide">
-            <svg viewBox="0 0 220 90" aria-hidden="true">
-              <circle cx="55" cy="40" r="16" fill="rgba(110,168,255,.18)" stroke="#6ea8ff" stroke-width="2"/>
-              <path d="M63 48 l10 14 l4 -5 l6 6 l4 -4 l-6 -6 l6 -3 z" fill="#e7ecf3"/>
-              <rect x="105" y="18" width="92" height="50" rx="6" fill="rgba(14,17,26,.9)" stroke="#46e0c8"/>
-              <line x1="113" y1="32" x2="188" y2="32" stroke="#46e0c8" stroke-width="3"/>
-              <line x1="113" y1="44" x2="170" y2="44" stroke="#8b93a7" stroke-width="3"/>
-              <line x1="113" y1="56" x2="180" y2="56" stroke="#8b93a7" stroke-width="3"/>
-            </svg>
+            <div class="tut-ico teal" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg></div>
             <div><b data-i18n="tut4t">Work the console</b><p data-i18n="tut4b">Click any node to set levels and notes — it autosaves. Archive noise. Export the whole matrix as FlatBuffers or JSON.</p></div>
           </div>
         </div>
